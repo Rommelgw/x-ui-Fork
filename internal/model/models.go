@@ -93,7 +93,7 @@ type Client struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 
-	Subscriptions []UserSubscription
+	Subscriptions []UserSubscription `gorm:"foreignKey:UserID;references:ID"`
 }
 
 func (Client) TableName() string {
@@ -129,4 +129,23 @@ type ClientNodeStat struct {
 
 func (ClientNodeStat) TableName() string {
 	return "client_node_stats"
+}
+
+type DomainCertificate struct {
+	ID          uint   `gorm:"primaryKey"`
+	Domain      string `gorm:"size:255;uniqueIndex;not null"`
+	CertFile    string `gorm:"size:500"`
+	KeyFile     string `gorm:"size:500"`
+	CertContent []byte `gorm:"type:text"`
+	KeyContent  []byte `gorm:"type:text"`
+	Issuer      string `gorm:"size:255"`
+	ExpiresAt   *time.Time
+	AutoRenew   bool `gorm:"default:false"`
+	LastChecked *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+func (DomainCertificate) TableName() string {
+	return "domain_certificates"
 }

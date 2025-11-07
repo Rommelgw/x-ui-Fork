@@ -35,10 +35,11 @@ func main() {
 	nodeService := service.NewNodeService(db)
 	configService := service.NewConfigService(db)
 	subscriptionService := service.NewSubscriptionService(db, configService)
+	certificateService := service.NewCertificateService(db)
 	monitor := service.NewHealthMonitor(nodeService)
 	monitor.Start(ctx)
 
-	server := master.NewServer(cfg, nodeService, configService, subscriptionService)
+	server := master.NewServer(cfg, nodeService, configService, subscriptionService, certificateService)
 	addr := ":" + cfg.HTTPPort
 
 	// Determine protocol

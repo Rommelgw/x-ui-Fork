@@ -25,9 +25,10 @@ type Server struct {
 	nodeService         *service.NodeService
 	configService       *service.ConfigService
 	subscriptionService *service.SubscriptionService
+	certificateService  *service.CertificateService
 }
 
-func NewServer(cfg *config.MasterConfig, nodeService *service.NodeService, configService *service.ConfigService, subscriptionService *service.SubscriptionService) *Server {
+func NewServer(cfg *config.MasterConfig, nodeService *service.NodeService, configService *service.ConfigService, subscriptionService *service.SubscriptionService, certificateService *service.CertificateService) *Server {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.Use(gin.Recovery())
@@ -38,6 +39,7 @@ func NewServer(cfg *config.MasterConfig, nodeService *service.NodeService, confi
 		nodeService:         nodeService,
 		configService:       configService,
 		subscriptionService: subscriptionService,
+		certificateService:  certificateService,
 	}
 
 	s.registerRoutes()
@@ -64,6 +66,9 @@ func (s *Server) registerRoutes() {
 		{
 			admin.GET("/dashboard", s.handleDashboard)
 			admin.GET("/nodes", s.handleListNodes)
+			admin.GET("/certificates/search", s.handleSearchCertificates)
+			admin.GET("/certificates/domain/:domain", s.handleGetCertificateByDomain)
+			admin.POST("/certificates/check/:domain", s.handleCheckCertificate)
 		}
 	}
 }
@@ -302,6 +307,57 @@ func (s *Server) verifyNodeSignature(c *gin.Context, nodeID string, payload []by
 		return false
 	}
 	return security.VerifyHMAC(payload, node.SecretKey, signature)
+}
+
+func (s *Server) handleSearchCertificates(c *gin.Context) {
+	query := c.Query("q")
+	if query == "" {
+		s.respondError(c, http.StatusBadRequest, "query parameter 'q' is required")
+		return
+	}
+
+	results, err := s.certificateService.SearchDomain(c.Request.Context(), query)
+	if err != nil {
+		s.respondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"results": results,
+		"count":   len(results),
+	})
+}
+
+func (s *Server) handleGetCertificateByDomain(c *gin.Context) {
+	domain := c.Param("domain")
+	if domain == "" {
+		s.respondError(c, http.StatusBadRequest, "domain parameter is required")
+		return
+	}
+
+	info, err := s.certificateService.GetCertificateByDomain(c.Request.Context(), domain)
+	if err != nil {
+		s.respondError(c, http.StatusNotFound, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, info)
+}
+
+func (s *Server) handleCheckCertificate(c *gin.Context) {
+	domain := c.Param("domain")
+	if domain == "" {
+		s.respondError(c, http.StatusBadRequest, "domain parameter is required")
+		return
+	}
+
+	info, err := s.certificateService.CheckCertificate(c.Request.Context(), domain)
+	if err != nil {
+		s.respondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, info)
 }
 
 func (s *Server) respondError(c *gin.Context, status int, message string) {

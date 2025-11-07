@@ -206,6 +206,89 @@ GET /api/admin/nodes
 }
 ```
 
+#### Поиск доменов и сертификатов
+
+```
+GET /api/admin/certificates/search?q=example.com
+```
+
+Поиск доменов и их сертификатов по запросу.
+
+**Query Parameters:**
+- `q` (обязательный): поисковый запрос (часть домена)
+
+**Response:**
+```json
+{
+  "results": [
+    {
+      "domain": "example.com",
+      "cert_file": "/etc/ssl/certs/example.com/fullchain.pem",
+      "key_file": "/etc/ssl/certs/example.com/privkey.pem",
+      "issuer": "CN=Let's Encrypt",
+      "expires_at": "2025-04-20T10:00:00Z",
+      "is_valid": true,
+      "days_left": 89,
+      "auto_renew": true,
+      "last_checked": "2025-01-20T10:00:00Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+#### Получение сертификата по домену
+
+```
+GET /api/admin/certificates/domain/:domain
+```
+
+Получение информации о сертификате для конкретного домена.
+
+**Path Parameters:**
+- `domain`: доменное имя
+
+**Response:**
+```json
+{
+  "domain": "example.com",
+  "cert_file": "/etc/ssl/certs/example.com/fullchain.pem",
+  "key_file": "/etc/ssl/certs/example.com/privkey.pem",
+  "issuer": "CN=Let's Encrypt",
+  "expires_at": "2025-04-20T10:00:00Z",
+  "is_valid": true,
+  "days_left": 89,
+  "auto_renew": true,
+  "last_checked": "2025-01-20T10:00:00Z"
+}
+```
+
+#### Проверка сертификата
+
+```
+POST /api/admin/certificates/check/:domain
+```
+
+Проверка и обновление информации о сертификате (парсинг файла/контента, обновление даты истечения).
+
+**Path Parameters:**
+- `domain`: доменное имя
+
+**Response:**
+```json
+{
+  "domain": "example.com",
+  "cert_file": "/etc/ssl/certs/example.com/fullchain.pem",
+  "key_file": "/etc/ssl/certs/example.com/privkey.pem",
+  "issuer": "CN=Let's Encrypt",
+  "expires_at": "2025-04-20T10:00:00Z",
+  "is_valid": true,
+  "days_left": 89,
+  "auto_renew": true,
+  "last_checked": "2025-01-20T10:00:00Z"
+}
+```
+
 ## Коды ошибок
 
 - `400 Bad Request` — неверный формат запроса
