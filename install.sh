@@ -166,6 +166,7 @@ install_master() {
     INSTALL_DIR="/opt/vpn-master"
     DATA_DIR="/var/lib/vpn-master"
     BIN_PATH="/usr/local/bin/vpn-master"
+    PORT="8085"
     
     mkdir -p "${INSTALL_DIR}"
     mkdir -p "${DATA_DIR}"
@@ -227,11 +228,23 @@ EOF
     systemctl daemon-reload
     systemctl enable --now vpn-master.service
     
+    # Get server IP
+    SERVER_IP=$(curl -s https://api.ipify.org 2>/dev/null || echo "YOUR_SERVER_IP")
+    
     echo -e "${green}VPN Master Panel installed successfully!${plain}"
-    echo -e "${green}Service: vpn-master${plain}"
-    echo -e "${green}Port: 8085${plain}"
-    echo -e "${green}Database: ${DATA_DIR}/master.db${plain}"
-    echo -e "${green}Config: ${ENV_FILE}${plain}"
+    echo ""
+    echo -e "┌───────────────────────────────────────────────────────┐"
+    echo -e "│  ${blue}Access Information:${plain}                              │"
+    echo -e "│                                                       │"
+    echo -e "│  ${green}API URL:${plain}    http://${SERVER_IP}:${PORT}/api          │"
+    echo -e "│  ${green}Health:${plain}      http://${SERVER_IP}:${PORT}/api/health    │"
+    echo -e "│  ${green}Dashboard:${plain}   http://${SERVER_IP}:${PORT}/api/admin/dashboard │"
+    echo -e "│                                                       │"
+    echo -e "│  ${yellow}Service:${plain}     vpn-master                            │"
+    echo -e "│  ${yellow}Port:${plain}         ${PORT}                                │"
+    echo -e "│  ${yellow}Database:${plain}     ${DATA_DIR}/master.db                │"
+    echo -e "│  ${yellow}Config:${plain}       ${ENV_FILE}                           │"
+    echo -e "└───────────────────────────────────────────────────────┘"
     echo ""
     echo -e "${yellow}To check status: systemctl status vpn-master${plain}"
     echo -e "${yellow}To view logs: journalctl -u vpn-master -f${plain}"
