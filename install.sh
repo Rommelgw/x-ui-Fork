@@ -147,24 +147,28 @@ install_x-ui() {
 
     # Download resources
     if [ $# == 0 ]; then
-        # Try multiple methods to get latest version
-        tag_version=$(curl -Ls "https://api.github.com/repos/Differin3/x-ui-Fork/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        # Try multiple methods to get latest version with timeouts
+        echo -e "${yellow}Fetching latest version...${plain}"
+        tag_version=$(curl -s --max-time 10 "https://api.github.com/repos/Differin3/x-ui-Fork/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$tag_version" ]]; then
-            echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-            tag_version=$(curl -4 -Ls "https://api.github.com/repos/Differin3/x-ui-Fork/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+            echo -e "${yellow}Trying with IPv4...${plain}"
+            tag_version=$(curl -4 -s --max-time 10 "https://api.github.com/repos/Differin3/x-ui-Fork/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         fi
         if [[ ! -n "$tag_version" ]]; then
-            echo -e "${yellow}Trying alternative method (tags)...${plain}"
-            tag_version=$(curl -Ls "https://api.github.com/repos/Differin3/x-ui-Fork/tags" 2>/dev/null | grep '"name":' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+            echo -e "${yellow}Trying tags API...${plain}"
+            tag_version=$(curl -s --max-time 10 "https://api.github.com/repos/Differin3/x-ui-Fork/tags?per_page=1" 2>/dev/null | grep '"name":' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
         fi
         if [[ ! -n "$tag_version" ]]; then
-            echo -e "${yellow}Trying to get version from releases page...${plain}"
-            tag_version=$(curl -Ls "https://github.com/Differin3/x-ui-Fork/releases" 2>/dev/null | grep -oE 'releases/tag/v?[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's|releases/tag/||')
+            echo -e "${yellow}Trying releases page...${plain}"
+            tag_version=$(curl -s --max-time 10 "https://github.com/Differin3/x-ui-Fork/releases" 2>/dev/null | grep -oE 'releases/tag/v?[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's|releases/tag/||')
         fi
         if [[ ! -n "$tag_version" ]]; then
             echo -e "${red}Failed to fetch x-ui version automatically.${plain}"
-            echo -e "${yellow}You can specify version manually: bash <(curl -Ls https://raw.githubusercontent.com/Differin3/x-ui-Fork/main/install.sh) v2.3.5${plain}"
-            echo -e "${yellow}Or try again later (GitHub API may be rate-limited)${plain}"
+            echo -e "${yellow}Possible solutions:${plain}"
+            echo -e "  1. Specify version manually: ${green}bash <(curl -Ls https://raw.githubusercontent.com/Differin3/x-ui-Fork/main/install.sh) v2.8.5${plain}"
+            echo -e "  2. Check your internet connection and GitHub accessibility"
+            echo -e "  3. Try again later (GitHub API may be rate-limited)"
+            echo -e "  4. Clone repository and build manually: ${green}git clone https://github.com/Differin3/x-ui-Fork.git && cd x-ui-Fork && go build -o x-ui${plain}"
             exit 1
         fi
         echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
