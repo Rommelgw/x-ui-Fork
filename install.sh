@@ -147,14 +147,25 @@ install_x-ui() {
 
     # Download resources
     if [ $# == 0 ]; then
-        tag_version=$(curl -Ls "https://api.github.com/repos/Differin3/x-ui-Fork/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        # Try multiple methods to get latest version
+        tag_version=$(curl -Ls "https://api.github.com/repos/Differin3/x-ui-Fork/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$tag_version" ]]; then
             echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-            tag_version=$(curl -4 -Ls "https://api.github.com/repos/Differin3/x-ui-Fork/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-            if [[ ! -n "$tag_version" ]]; then
-                echo -e "${red}Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later${plain}"
-                exit 1
-            fi
+            tag_version=$(curl -4 -Ls "https://api.github.com/repos/Differin3/x-ui-Fork/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        fi
+        if [[ ! -n "$tag_version" ]]; then
+            echo -e "${yellow}Trying alternative method (tags)...${plain}"
+            tag_version=$(curl -Ls "https://api.github.com/repos/Differin3/x-ui-Fork/tags" 2>/dev/null | grep '"name":' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+        fi
+        if [[ ! -n "$tag_version" ]]; then
+            echo -e "${yellow}Trying to get version from releases page...${plain}"
+            tag_version=$(curl -Ls "https://github.com/Differin3/x-ui-Fork/releases" 2>/dev/null | grep -oE 'releases/tag/v?[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's|releases/tag/||')
+        fi
+        if [[ ! -n "$tag_version" ]]; then
+            echo -e "${red}Failed to fetch x-ui version automatically.${plain}"
+            echo -e "${yellow}You can specify version manually: bash <(curl -Ls https://raw.githubusercontent.com/Differin3/x-ui-Fork/main/install.sh) v2.3.5${plain}"
+            echo -e "${yellow}Or try again later (GitHub API may be rate-limited)${plain}"
+            exit 1
         fi
         echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
         wget --inet4-only -N -O /usr/local/x-ui-linux-$(arch).tar.gz https://github.com/Differin3/x-ui-Fork/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
