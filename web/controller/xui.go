@@ -4,20 +4,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// XUIController is the main controller for the X-UI panel, managing sub-controllers.
 type XUIController struct {
 	BaseController
 
-	inboundController     *InboundController
 	settingController     *SettingController
 	xraySettingController *XraySettingController
 }
 
+// NewXUIController creates a new XUIController and initializes its routes.
 func NewXUIController(g *gin.RouterGroup) *XUIController {
 	a := &XUIController{}
 	a.initRouter(g)
 	return a
 }
 
+// initRouter sets up the main panel routes and initializes sub-controllers.
 func (a *XUIController) initRouter(g *gin.RouterGroup) {
 	g = g.Group("/panel")
 	g.Use(a.checkLogin)
@@ -26,24 +28,45 @@ func (a *XUIController) initRouter(g *gin.RouterGroup) {
 	g.GET("/inbounds", a.inbounds)
 	g.GET("/settings", a.settings)
 	g.GET("/xray", a.xraySettings)
+	g.GET("/nodes", a.nodes)
+	g.GET("/multi-subscriptions", a.multiSubscriptions)
+	g.GET("/map", a.mapPage)
 
-	a.inboundController = NewInboundController(g)
 	a.settingController = NewSettingController(g)
 	a.xraySettingController = NewXraySettingController(g)
 }
 
+// index renders the main panel index page.
 func (a *XUIController) index(c *gin.Context) {
 	html(c, "index.html", "pages.index.title", nil)
 }
 
+// inbounds renders the inbounds management page.
 func (a *XUIController) inbounds(c *gin.Context) {
 	html(c, "inbounds.html", "pages.inbounds.title", nil)
 }
 
+// settings renders the settings management page.
 func (a *XUIController) settings(c *gin.Context) {
 	html(c, "settings.html", "pages.settings.title", nil)
 }
 
+// xraySettings renders the Xray settings page.
 func (a *XUIController) xraySettings(c *gin.Context) {
 	html(c, "xray.html", "pages.xray.title", nil)
+}
+
+// nodes renders the nodes management page.
+func (a *XUIController) nodes(c *gin.Context) {
+    html(c, "nodes.html", "pages.nodes.title", nil)
+}
+
+// multiSubscriptions renders the multi-subscriptions management page.
+func (a *XUIController) multiSubscriptions(c *gin.Context) {
+    html(c, "multi_subscriptions.html", "pages.multiSubscriptions.title", nil)
+}
+
+// mapPage renders the world map page.
+func (a *XUIController) mapPage(c *gin.Context) {
+    html(c, "map.html", "pages.map.title", nil)
 }

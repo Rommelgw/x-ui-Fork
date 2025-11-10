@@ -1,0 +1,20 @@
+### External API Smoke Tests
+
+# Set your base URL and API key
+@base = http://localhost:2053
+@key = TEST_EXTERNAL_KEY
+
+### No key -> expect 401
+GET {{base}}/api/external/server/status
+
+### Wrong key -> expect 401
+GET {{base}}/api/external/server/status
+X-API-Key: WRONG
+
+### Correct key -> expect 200 JSON
+GET {{base}}/api/external/server/status
+X-API-Key: {{key}}
+
+### Inbounds list -> expect 200 JSON
+GET {{base}}/api/external/inbounds/list
+X-API-Key: {{key}}

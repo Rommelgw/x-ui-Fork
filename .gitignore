@@ -1,73 +1,40 @@
-# Binaries
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-*.out
-/bin/
-/dist/
-
-# Go
-vendor/
-*.mod.sum
-
-# IDE
+# Ignore editor and IDE settings
 .idea/
 .vscode/
-*.swp
-*.swo
-*~
-.DS_Store
+.cache/
+.sync*
 
-# Build artifacts
-*.log
-*.tmp
-*.temp
-
-# Database
-*.db
-*.db-shm
-*.db-wal
-data/
-*.sqlite
-*.sqlite3
-
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-.npm
-.eslintcache
-
-# Frontend build
-web/admin/dist/
-web/admin/.vite/
-
-# Environment
-.env
-.env.local
-.env.*.local
-*.env
-
-# Certificates
-*.pem
-*.key
-*.crt
-*.cert
-
-# OS
-Thumbs.db
-.DS_Store
-
-# Logs
-logs/
+# Ignore log files
 *.log
 
-# Temporary files
+# Ignore temporary files
 tmp/
-temp/
-*.tmp
+*.tar.gz
+
+# Ignore build and distribution directories
+backup/
+bin/
+dist/
+release/
+node_modules/
+
+# Ignore compiled binaries
+main
+
+# Ignore script and executable files
+/release.sh
+/x-ui
+
+# Ignore OS specific files
+.DS_Store
+Thumbs.db
+
+# Ignore Go build files
+*.exe
+x-ui.db
+
+# Ignore Docker specific files
+docker-compose.override.yml
+
+# Ignore .env (Environment Variables) file
+.env
