@@ -770,7 +770,7 @@
 "title" = "Nodes"
 "add" = "Add Node"
 "refresh" = "Refresh"
-"id" = "ID"
+"nodeId" = "ID"
 "name" = "Name"
 "host" = "Host"
 "port" = "Port"
