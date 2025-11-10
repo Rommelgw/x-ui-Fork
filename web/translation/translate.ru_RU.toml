@@ -864,7 +864,7 @@
 "saveFailed" = "Не удалось сохранить"
 "loadFailed" = "Не удалось загрузить данные"
 
-[security]
+[security.api]
 "rotate" = "Ротировать"
 "rotateConfirmTitle" = "Ротировать External API Key?"
 "rotateConfirmDesc" = "После ротации необходимо обновить ключ на всех управляемых нодах. Старый ключ перестанет работать немедленно. Продолжить?"

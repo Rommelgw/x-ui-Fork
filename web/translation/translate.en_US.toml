@@ -864,7 +864,7 @@
 "saveFailed" = "Save failed"
 "loadFailed" = "Failed to load data"
 
-[security]
+[security.api]
 "rotate" = "Rotate"
 "rotateConfirmTitle" = "Rotate External API Key?"
 "rotateConfirmDesc" = "After rotation, you must update this key on all managed nodes. Old key will immediately stop working. Continue?"
