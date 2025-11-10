@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# VPN Master Panel Installation Script
-# Форк 3x-ui с поддержкой многонодовой архитектуры
-
-set -euo pipefail
-
 red='\033[0;31m'
 green='\033[0;32m'
 blue='\033[0;34m'
@@ -42,264 +37,234 @@ arch() {
     esac
 }
 
-echo "arch: $(arch)"
-
-os_version=""
-os_version=$(grep "^VERSION_ID" /etc/os-release | cut -d '=' -f2 | tr -d '"' | tr -d '.')
-
-if [[ "${release}" == "arch" ]]; then
-    echo "Your OS is Arch Linux"
-elif [[ "${release}" == "parch" ]]; then
-    echo "Your OS is Parch Linux"
-elif [[ "${release}" == "manjaro" ]]; then
-    echo "Your OS is Manjaro"
-elif [[ "${release}" == "armbian" ]]; then
-    echo "Your OS is Armbian"
-elif [[ "${release}" == "alpine" ]]; then
-    echo "Your OS is Alpine Linux"
-elif [[ "${release}" == "opensuse-tumbleweed" ]]; then
-    echo "Your OS is OpenSUSE Tumbleweed"
-elif [[ "${release}" == "openEuler" ]]; then
-    if [[ ${os_version} -lt 2203 ]]; then
-        echo -e "${red} Please use OpenEuler 22.03 or higher ${plain}\n" && exit 1
-    fi
-elif [[ "${release}" == "centos" ]]; then
-    if [[ ${os_version} -lt 8 ]]; then
-        echo -e "${red} Please use CentOS 8 or higher ${plain}\n" && exit 1
-    fi
-elif [[ "${release}" == "ubuntu" ]]; then
-    if [[ ${os_version} -lt 2004 ]]; then
-        echo -e "${red} Please use Ubuntu 20 or higher version!${plain}\n" && exit 1
-    fi
-elif [[ "${release}" == "fedora" ]]; then
-    if [[ ${os_version} -lt 36 ]]; then
-        echo -e "${red} Please use Fedora 36 or higher version!${plain}\n" && exit 1
-    fi
-elif [[ "${release}" == "amzn" ]]; then
-    if [[ ${os_version} != "2023" ]]; then
-        echo -e "${red} Please use Amazon Linux 2023!${plain}\n" && exit 1
-    fi
-elif [[ "${release}" == "debian" ]]; then
-    if [[ ${os_version} -lt 11 ]]; then
-        echo -e "${red} Please use Debian 11 or higher ${plain}\n" && exit 1
-    fi
-elif [[ "${release}" == "almalinux" ]]; then
-    if [[ ${os_version} -lt 80 ]]; then
-        echo -e "${red} Please use AlmaLinux 8.0 or higher ${plain}\n" && exit 1
-    fi
-elif [[ "${release}" == "rocky" ]]; then
-    if [[ ${os_version} -lt 8 ]]; then
-        echo -e "${red} Please use Rocky Linux 8 or higher ${plain}\n" && exit 1
-    fi
-elif [[ "${release}" == "ol" ]]; then
-    if [[ ${os_version} -lt 8 ]]; then
-        echo -e "${red} Please use Oracle Linux 8 or higher ${plain}\n" && exit 1
-    fi
-else
-    echo -e "${red}Your operating system is not supported by this script.${plain}\n"
-    echo "Please ensure you are using one of the following supported operating systems:"
-    echo "- Ubuntu 20.04+"
-    echo "- Debian 11+"
-    echo "- CentOS 8+"
-    echo "- OpenEuler 22.03+"
-    echo "- Fedora 36+"
-    echo "- Arch Linux"
-    echo "- Parch Linux"
-    echo "- Manjaro"
-    echo "- Armbian"
-    echo "- AlmaLinux 8.0+"
-    echo "- Rocky Linux 8+"
-    echo "- Oracle Linux 8+"
-    echo "- OpenSUSE Tumbleweed"
-    echo "- Amazon Linux 2023"
-    exit 1
-fi
+echo "Arch: $(arch)"
 
 install_base() {
     case "${release}" in
     ubuntu | debian | armbian)
-        apt-get update && apt-get install -y -q wget curl tar tzdata git
+        apt-get update && apt-get install -y -q wget curl tar tzdata
         ;;
-    centos | almalinux | rocky | ol)
-        yum -y update && yum install -y -q wget curl tar tzdata git
+    centos | rhel | almalinux | rocky | ol)
+        yum -y update && yum install -y -q wget curl tar tzdata
         ;;
-    fedora | amzn)
-        dnf -y update && dnf install -y -q wget curl tar tzdata git
+    fedora | amzn | virtuozzo)
+        dnf -y update && dnf install -y -q wget curl tar tzdata
         ;;
     arch | manjaro | parch)
-        pacman -Syu && pacman -Syu --noconfirm wget curl tar tzdata git
+        pacman -Syu && pacman -Syu --noconfirm wget curl tar tzdata
         ;;
-    opensuse-tumbleweed)
-        zypper refresh && zypper -q install -y wget curl tar timezone git
+    opensuse-tumbleweed | opensuse-leap)
+        zypper refresh && zypper -q install -y wget curl tar timezone
+        ;;
+    alpine)
+        apk update && apk add wget curl tar tzdata
         ;;
     *)
-        apt-get update && apt install -y -q wget curl tar tzdata git
+        apt-get update && apt-get install -y -q wget curl tar tzdata
         ;;
     esac
 }
 
-check_go() {
-    if ! command -v go &> /dev/null; then
-        echo -e "${yellow}Go is not installed. Installing Go 1.23+...${plain}"
-        GO_VERSION="1.23.5"
-        ARCH=$(arch)
-        case "${ARCH}" in
-        amd64) GO_ARCH="amd64" ;;
-        arm64) GO_ARCH="arm64" ;;
-        armv7) GO_ARCH="armv6" ;;
-        *) GO_ARCH="amd64" ;;
-        esac
-        
-        wget -q "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" -O /tmp/go.tar.gz
-        rm -rf /usr/local/go
-        tar -C /usr/local -xzf /tmp/go.tar.gz
-        rm /tmp/go.tar.gz
-        export PATH=$PATH:/usr/local/go/bin
-        echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile
-    fi
-    
-    # Check for C compiler (required for CGO)
-    if ! command -v gcc &> /dev/null; then
-        echo -e "${yellow}C compiler (gcc) not found. Installing build-essential...${plain}"
-        case "${release}" in
-        ubuntu | debian | armbian)
-            apt-get install -y -q build-essential
-            ;;
-        centos | almalinux | rocky | ol)
-            yum install -y -q gcc
-            ;;
-        fedora | amzn)
-            dnf install -y -q gcc
-            ;;
-        arch | manjaro | parch)
-            pacman -Syu --noconfirm base-devel
-            ;;
-        opensuse-tumbleweed)
-            zypper -q install -y gcc
-            ;;
-        *)
-            apt-get install -y -q build-essential
-            ;;
-        esac
-    fi
-    
-    echo -e "${green}Go version: $(go version)${plain}"
+gen_random_string() {
+    local length="$1"
+    local random_string=$(LC_ALL=C tr -dc 'a-zA-Z0-9' </dev/urandom | fold -w "$length" | head -n 1)
+    echo "$random_string"
 }
 
-install_master() {
-    echo -e "${green}Installing VPN Master Panel...${plain}"
-    
-    INSTALL_DIR="/opt/vpn-master"
-    DATA_DIR="/var/lib/vpn-master"
-    BIN_PATH="/usr/local/bin/vpn-master"
-    PORT="8085"
-    
-    mkdir -p "${INSTALL_DIR}"
-    mkdir -p "${DATA_DIR}"
-    
-    # Ensure Go is in PATH
-    export PATH=$PATH:/usr/local/go/bin
-    if ! command -v go &> /dev/null; then
-        echo -e "${red}Error: Go is not found in PATH. Please run: export PATH=\$PATH:/usr/local/go/bin${plain}"
+config_after_install() {
+    local existing_hasDefaultCredential=$(/usr/local/x-ui/x-ui setting -show true | grep -Eo 'hasDefaultCredential: .+' | awk '{print $2}')
+    local existing_webBasePath=$(/usr/local/x-ui/x-ui setting -show true | grep -Eo 'webBasePath: .+' | awk '{print $2}')
+    local existing_port=$(/usr/local/x-ui/x-ui setting -show true | grep -Eo 'port: .+' | awk '{print $2}')
+    local URL_lists=(
+        "https://api4.ipify.org"
+		"https://ipv4.icanhazip.com"
+		"https://v4.api.ipinfo.io/ip"
+		"https://ipv4.myexternalip.com/raw"
+		"https://4.ident.me"
+		"https://check-host.net/ip"
+    )
+    local server_ip=""
+    for ip_address in "${URL_lists[@]}"; do
+        server_ip=$(curl -s --max-time 3 "${ip_address}" 2>/dev/null | tr -d '[:space:]')
+        if [[ -n "${server_ip}" ]]; then
+            break
+        fi
+    done
+
+    if [[ ${#existing_webBasePath} -lt 4 ]]; then
+        if [[ "$existing_hasDefaultCredential" == "true" ]]; then
+            local config_webBasePath=$(gen_random_string 18)
+            local config_username=$(gen_random_string 10)
+            local config_password=$(gen_random_string 10)
+
+            read -rp "Would you like to customize the Panel Port settings? (If not, a random port will be applied) [y/n]: " config_confirm
+            if [[ "${config_confirm}" == "y" || "${config_confirm}" == "Y" ]]; then
+                read -rp "Please set up the panel port: " config_port
+                echo -e "${yellow}Your Panel Port is: ${config_port}${plain}"
+            else
+                local config_port=$(shuf -i 1024-62000 -n 1)
+                echo -e "${yellow}Generated random port: ${config_port}${plain}"
+            fi
+
+            /usr/local/x-ui/x-ui setting -username "${config_username}" -password "${config_password}" -port "${config_port}" -webBasePath "${config_webBasePath}"
+            echo -e "This is a fresh installation, generating random login info for security concerns:"
+            echo -e "###############################################"
+            echo -e "${green}Username: ${config_username}${plain}"
+            echo -e "${green}Password: ${config_password}${plain}"
+            echo -e "${green}Port: ${config_port}${plain}"
+            echo -e "${green}WebBasePath: ${config_webBasePath}${plain}"
+            echo -e "${green}Access URL: http://${server_ip}:${config_port}/${config_webBasePath}${plain}"
+            echo -e "###############################################"
+        else
+            local config_webBasePath=$(gen_random_string 18)
+            echo -e "${yellow}WebBasePath is missing or too short. Generating a new one...${plain}"
+            /usr/local/x-ui/x-ui setting -webBasePath "${config_webBasePath}"
+            echo -e "${green}New WebBasePath: ${config_webBasePath}${plain}"
+            echo -e "${green}Access URL: http://${server_ip}:${existing_port}/${config_webBasePath}${plain}"
+        fi
+    else
+        if [[ "$existing_hasDefaultCredential" == "true" ]]; then
+            local config_username=$(gen_random_string 10)
+            local config_password=$(gen_random_string 10)
+
+            echo -e "${yellow}Default credentials detected. Security update required...${plain}"
+            /usr/local/x-ui/x-ui setting -username "${config_username}" -password "${config_password}"
+            echo -e "Generated new random login credentials:"
+            echo -e "###############################################"
+            echo -e "${green}Username: ${config_username}${plain}"
+            echo -e "${green}Password: ${config_password}${plain}"
+            echo -e "###############################################"
+        else
+            echo -e "${green}Username, Password, and WebBasePath are properly set. Exiting...${plain}"
+        fi
+    fi
+
+    /usr/local/x-ui/x-ui migrate
+}
+
+install_x-ui() {
+    cd /usr/local/
+
+    # Download resources
+    if [ $# == 0 ]; then
+        # Try multiple methods to get latest version
+        tag_version=$(curl -Ls "https://api.github.com/repos/Differin3/x-ui-Fork/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        if [[ ! -n "$tag_version" ]]; then
+            echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
+            tag_version=$(curl -4 -Ls "https://api.github.com/repos/Differin3/x-ui-Fork/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        fi
+        if [[ ! -n "$tag_version" ]]; then
+            echo -e "${yellow}Trying alternative method (tags)...${plain}"
+            tag_version=$(curl -Ls "https://api.github.com/repos/Differin3/x-ui-Fork/tags" 2>/dev/null | grep '"name":' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+        fi
+        if [[ ! -n "$tag_version" ]]; then
+            echo -e "${yellow}Trying to get version from releases page...${plain}"
+            tag_version=$(curl -Ls "https://github.com/Differin3/x-ui-Fork/releases" 2>/dev/null | grep -oE 'releases/tag/v?[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's|releases/tag/||')
+        fi
+        if [[ ! -n "$tag_version" ]]; then
+            echo -e "${red}Failed to fetch x-ui version automatically.${plain}"
+            echo -e "${yellow}You can specify version manually: bash <(curl -Ls https://raw.githubusercontent.com/Differin3/x-ui-Fork/main/install.sh) v2.3.5${plain}"
+            echo -e "${yellow}Or try again later (GitHub API may be rate-limited)${plain}"
+            exit 1
+        fi
+        echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
+        wget --inet4-only -N -O /usr/local/x-ui-linux-$(arch).tar.gz https://github.com/Differin3/x-ui-Fork/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}Downloading x-ui failed, please be sure that your server can access GitHub ${plain}"
+            exit 1
+        fi
+    else
+        tag_version=$1
+        tag_version_numeric=${tag_version#v}
+        min_version="2.3.5"
+
+        if [[ "$(printf '%s\n' "$min_version" "$tag_version_numeric" | sort -V | head -n1)" != "$min_version" ]]; then
+            echo -e "${red}Please use a newer version (at least v2.3.5). Exiting installation.${plain}"
+            exit 1
+        fi
+
+        url="https://github.com/Differin3/x-ui-Fork/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
+        echo -e "Beginning to install x-ui $1"
+        wget --inet4-only -N -O /usr/local/x-ui-linux-$(arch).tar.gz ${url}
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}Download x-ui $1 failed, please check if the version exists ${plain}"
+            exit 1
+        fi
+    fi
+    wget --inet4-only -O /usr/bin/x-ui-temp https://raw.githubusercontent.com/Differin3/x-ui-Fork/main/x-ui.sh
+    if [[ $? -ne 0 ]]; then
+        echo -e "${red}Failed to download x-ui.sh${plain}"
         exit 1
     fi
-    
-    # Build from source if we're in the repo, otherwise clone
-    if [[ -f "${cur_dir}/go.mod" && -d "${cur_dir}/cmd/master" ]]; then
-        echo -e "${green}Building from current directory...${plain}"
-        cd "${cur_dir}"
-        go mod download
-        CGO_ENABLED=1 GOOS=linux GOARCH=$(go env GOARCH) go build -o "${BIN_PATH}" ./cmd/master
-    else
-        echo -e "${yellow}Cloning repository...${plain}"
-        REPO_URL="https://github.com/Differin3/x-ui-Fork.git"
-        if [[ -d "${INSTALL_DIR}/.git" ]]; then
-            git -C "${INSTALL_DIR}" pull
+
+    # Stop x-ui service and remove old resources
+    if [[ -e /usr/local/x-ui/ ]]; then
+        if [[ $release == "alpine" ]]; then
+            rc-service x-ui stop
         else
-            git clone "${REPO_URL}" "${INSTALL_DIR}"
+            systemctl stop x-ui
         fi
-        cd "${INSTALL_DIR}"
-        go mod download
-        CGO_ENABLED=1 GOOS=linux GOARCH=$(go env GOARCH) go build -o "${BIN_PATH}" ./cmd/master
+        rm /usr/local/x-ui/ -rf
     fi
-    
-    chmod +x "${BIN_PATH}"
-    
-    # Generate HMAC secret
-    SECRET=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 32)
-    
-    ENV_FILE="/etc/vpn-master.env"
-    PORT="8085"
-    cat >"${ENV_FILE}" <<EOF
-MASTER_HTTP_PORT=${PORT}
-MASTER_DB_DRIVER=sqlite
-MASTER_DB_DSN=${DATA_DIR}/master.db
-MASTER_DB_AUTO_MIGRATE=true
-MASTER_HMAC_SECRET=${SECRET}
-EOF
-    
-    chmod 600 "${ENV_FILE}"
-    
-    SERVICE_FILE="/etc/systemd/system/vpn-master.service"
-    cat >"${SERVICE_FILE}" <<EOF
-[Unit]
-Description=VPN Master Control Panel
-After=network-online.target
-Wants=network-online.target
 
-[Service]
-Type=simple
-User=root
-EnvironmentFile=${ENV_FILE}
-ExecStart=${BIN_PATH}
-Restart=on-failure
-RestartSec=5
+    # Extract resources and set permissions
+    tar zxvf x-ui-linux-$(arch).tar.gz
+    rm x-ui-linux-$(arch).tar.gz -f
+    
+    cd x-ui
+    chmod +x x-ui
+    chmod +x x-ui.sh
 
-[Install]
-WantedBy=multi-user.target
-EOF
-    
-    systemctl daemon-reload
-    systemctl enable --now vpn-master.service
-    
-    # Get server IP
-    SERVER_IP=$(curl -s https://api.ipify.org 2>/dev/null || echo "YOUR_SERVER_IP")
-    
-    echo -e "${green}VPN Master Panel installed successfully!${plain}"
-    echo ""
-    echo -e "┌───────────────────────────────────────────────────────┐"
-    echo -e "│  ${blue}Access Information:${plain}                              │"
-    echo -e "│                                                       │"
-    echo -e "│  ${green}API URL:${plain}    http://${SERVER_IP}:${PORT}/api          │"
-    echo -e "│  ${green}Health:${plain}      http://${SERVER_IP}:${PORT}/api/health    │"
-    echo -e "│  ${green}Dashboard:${plain}   http://${SERVER_IP}:${PORT}/api/admin/dashboard │"
-    echo -e "│                                                       │"
-    echo -e "│  ${yellow}Service:${plain}     vpn-master                            │"
-    echo -e "│  ${yellow}Port:${plain}         ${PORT}                                │"
-    echo -e "│  ${yellow}Database:${plain}     ${DATA_DIR}/master.db                │"
-    echo -e "│  ${yellow}Config:${plain}       ${ENV_FILE}                           │"
-    echo -e "└───────────────────────────────────────────────────────┘"
-    echo ""
-    echo -e "${yellow}To check status: systemctl status vpn-master${plain}"
-    echo -e "${yellow}To view logs: journalctl -u vpn-master -f${plain}"
+    # Check the system's architecture and rename the file accordingly
+    if [[ $(arch) == "armv5" || $(arch) == "armv6" || $(arch) == "armv7" ]]; then
+        mv bin/xray-linux-$(arch) bin/xray-linux-arm
+        chmod +x bin/xray-linux-arm
+    fi
+    chmod +x x-ui bin/xray-linux-$(arch)
+
+    # Update x-ui cli and se set permission
+    mv -f /usr/bin/x-ui-temp /usr/bin/x-ui
+    chmod +x /usr/bin/x-ui
+    config_after_install
+
+    if [[ $release == "alpine" ]]; then
+        wget --inet4-only -O /etc/init.d/x-ui https://raw.githubusercontent.com/Differin3/x-ui-Fork/main/x-ui.rc
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}Failed to download x-ui.rc${plain}"
+            exit 1
+        fi
+        chmod +x /etc/init.d/x-ui
+        rc-update add x-ui
+        rc-service x-ui start
+    else
+        cp -f x-ui.service /etc/systemd/system/
+        systemctl daemon-reload
+        systemctl enable x-ui
+        systemctl start x-ui
+    fi
+
+    echo -e "${green}x-ui ${tag_version}${plain} installation finished, it is running now..."
+    echo -e ""
+    echo -e "┌───────────────────────────────────────────────────────┐
+│  ${blue}x-ui control menu usages (subcommands):${plain}              │
+│                                                       │
+│  ${blue}x-ui${plain}              - Admin Management Script          │
+│  ${blue}x-ui start${plain}        - Start                            │
+│  ${blue}x-ui stop${plain}         - Stop                             │
+│  ${blue}x-ui restart${plain}      - Restart                          │
+│  ${blue}x-ui status${plain}       - Current Status                   │
+│  ${blue}x-ui settings${plain}     - Current Settings                 │
+│  ${blue}x-ui enable${plain}       - Enable Autostart on OS Startup   │
+│  ${blue}x-ui disable${plain}      - Disable Autostart on OS Startup  │
+│  ${blue}x-ui log${plain}          - Check logs                       │
+│  ${blue}x-ui banlog${plain}       - Check Fail2ban ban logs          │
+│  ${blue}x-ui update${plain}       - Update                           │
+│  ${blue}x-ui legacy${plain}       - Legacy version                   │
+│  ${blue}x-ui install${plain}      - Install                          │
+│  ${blue}x-ui uninstall${plain}    - Uninstall                        │
+└───────────────────────────────────────────────────────┘"
 }
 
-echo -e "${green}Running installation...${plain}"
+echo -e "${green}Running...${plain}"
 install_base
-check_go
-install_master
-
-echo -e "${green}Installation completed!${plain}"
-echo ""
-echo -e "┌───────────────────────────────────────────────────────┐"
-echo -e "│  ${blue}VPN Master Panel Control:${plain}                        │"
-echo -e "│                                                       │"
-echo -e "│  ${blue}systemctl start vpn-master${plain}   - Start            │"
-echo -e "│  ${blue}systemctl stop vpn-master${plain}    - Stop             │"
-echo -e "│  ${blue}systemctl restart vpn-master${plain} - Restart          │"
-echo -e "│  ${blue}systemctl status vpn-master${plain}  - Status           │"
-echo -e "│  ${blue}journalctl -u vpn-master -f${plain}  - View logs        │"
-echo -e "└───────────────────────────────────────────────────────┘"
-echo ""
-echo -e "${yellow}Note:${plain} Access URLs are displayed above after service starts."
-echo -e "${yellow}To see URLs in logs: journalctl -u vpn-master -n 20${plain}"
+install_x-ui $1
