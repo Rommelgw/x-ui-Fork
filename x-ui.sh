@@ -1873,57 +1873,7 @@ show_menu() {
     esac
 }
 
-if [[ $# > 0 ]]; then
-    case $1 in
-    "start")
-        check_install 0 && start 0
-        ;;
-    "stop")
-        check_install 0 && stop 0
-        ;;
-    "restart")
-        check_install 0 && restart 0
-        ;;
-    "status")
-        check_install 0 && status 0
-        ;;
-    "settings")
-        check_install 0 && check_config 0
-        ;;
-    "enable")
-        check_install 0 && enable 0
-        ;;
-    "disable")
-        check_install 0 && disable 0
-        ;;
-    "log")
-        check_install 0 && show_log 0
-        ;;
-    "banlog")
-        check_install 0 && show_banlog 0
-        ;;
-    "update")
-        check_install 0 && update 0
-        ;;
-    "legacy")
-        check_install 0 && legacy_version 0
-        ;;
-    "install")
-        check_uninstall 0 && install 0
-        ;;
-    "uninstall")
-        check_install 0 && uninstall 0
-        ;;
-    "repair")
-        repair_runtime
-        ;;
-    *) show_usage ;;
-    esac
-else
-    show_menu
-fi
-
-# Ensure runtime pieces (Xray binary and translations) exist
+# Ensure runtime pieces (Xray binary and translations) exist (placed before dispatcher so 'x-ui repair' works)
 repair_runtime() {
     local base="/usr/local/x-ui"
     if [[ ! -d "$base" ]]; then
@@ -2021,3 +1971,53 @@ repair_runtime() {
     LOGI "Repair completed. Restarting service..."
     systemctl restart x-ui
 }
+
+if [[ $# > 0 ]]; then
+    case $1 in
+    "start")
+        check_install 0 && start 0
+        ;;
+    "stop")
+        check_install 0 && stop 0
+        ;;
+    "restart")
+        check_install 0 && restart 0
+        ;;
+    "status")
+        check_install 0 && status 0
+        ;;
+    "settings")
+        check_install 0 && check_config 0
+        ;;
+    "enable")
+        check_install 0 && enable 0
+        ;;
+    "disable")
+        check_install 0 && disable 0
+        ;;
+    "log")
+        check_install 0 && show_log 0
+        ;;
+    "banlog")
+        check_install 0 && show_banlog 0
+        ;;
+    "update")
+        check_install 0 && update 0
+        ;;
+    "legacy")
+        check_install 0 && legacy_version 0
+        ;;
+    "install")
+        check_uninstall 0 && install 0
+        ;;
+    "uninstall")
+        check_install 0 && uninstall 0
+        ;;
+    "repair")
+        repair_runtime
+        ;;
+    *) show_usage ;;
+    esac
+else
+    show_menu
+fi
