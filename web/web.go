@@ -168,6 +168,11 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 	// Add aliases for root templates without "html/" prefix in the SAME template set
 	// Gin controllers use short names like "index.html", not "html/index.html"
 	// We add aliases to the same template set to preserve template relationships
+	// Collect root template names first to avoid modifying while iterating
+	var rootTemplates []struct {
+		fullName  string
+		shortName string
+	}
 	for _, tmpl := range t.Templates() {
 		name := tmpl.Name()
 		// Skip empty name (root template)
@@ -177,13 +182,36 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 		// Check if this is a root template (starts with "html/" and has no subdirectory)
 		if strings.HasPrefix(name, "html/") && !strings.Contains(name[len("html/"):], "/") {
 			shortName := name[len("html/"):]
-			// Add alias if it doesn't already exist (in the same template set)
-			if t.Lookup(shortName) == nil {
-				_, err := t.AddParseTree(shortName, tmpl.Tree)
+			rootTemplates = append(rootTemplates, struct {
+				fullName  string
+				shortName string
+			}{fullName: name, shortName: shortName})
+		}
+	}
+
+	// Now add aliases
+	for _, rt := range rootTemplates {
+		if t.Lookup(rt.shortName) == nil {
+			// Get the original template
+			origTmpl := t.Lookup(rt.fullName)
+			if origTmpl != nil {
+				_, err := t.AddParseTree(rt.shortName, origTmpl.Tree)
 				if err != nil {
-					logger.Warning("Failed to add template alias:", name, "->", shortName, err)
+					logger.Warning("Failed to add template alias:", rt.fullName, "->", rt.shortName, err)
+				} else {
+					logger.Debug("Added template alias:", rt.fullName, "->", rt.shortName)
 				}
 			}
+		}
+	}
+
+	// Verify that required templates exist
+	requiredTemplates := []string{"nodes.html", "multi_subscriptions.html", "map.html", "index.html", "login.html"}
+	for _, reqName := range requiredTemplates {
+		if t.Lookup(reqName) == nil {
+			logger.Warning("Required template not found:", reqName)
+		} else {
+			logger.Debug("Template found:", reqName)
 		}
 	}
 
