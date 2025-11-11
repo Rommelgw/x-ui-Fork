@@ -165,6 +165,15 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 		return nil, err
 	}
 
+	// Log all parsed template names for debugging
+	logger.Info("Parsed", len(t.Templates()), "templates")
+	for _, tmpl := range t.Templates() {
+		name := tmpl.Name()
+		if name != "" {
+			logger.Info("Template:", name)
+		}
+	}
+
 	// Add aliases for root templates without "html/" prefix in the SAME template set
 	// Gin controllers use short names like "index.html", not "html/index.html"
 	// We add aliases to the same template set to preserve template relationships
@@ -189,18 +198,22 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 		}
 	}
 
-	// Now add aliases
+	// Now add aliases using Clone to preserve all template relationships
 	for _, rt := range rootTemplates {
 		if t.Lookup(rt.shortName) == nil {
 			// Get the original template
 			origTmpl := t.Lookup(rt.fullName)
 			if origTmpl != nil {
+				// Add the parse tree to the main template set with the short name
+				// This preserves all template relationships because we're adding to the same set
 				_, err := t.AddParseTree(rt.shortName, origTmpl.Tree)
 				if err != nil {
 					logger.Warning("Failed to add template alias:", rt.fullName, "->", rt.shortName, err)
 				} else {
-					logger.Debug("Added template alias:", rt.fullName, "->", rt.shortName)
+					logger.Info("Added template alias:", rt.fullName, "->", rt.shortName)
 				}
+			} else {
+				logger.Warning("Original template not found:", rt.fullName)
 			}
 		}
 	}
@@ -211,7 +224,7 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 		if t.Lookup(reqName) == nil {
 			logger.Warning("Required template not found:", reqName)
 		} else {
-			logger.Debug("Template found:", reqName)
+			logger.Info("Template found:", reqName)
 		}
 	}
 
