@@ -144,15 +144,19 @@ func (s *Server) getHtmlFiles() ([]string, error) {
 // template set for production usage.
 func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, error) {
 	t := template.New("").Funcs(funcMap)
+	
+	// Parse all HTML files recursively
 	err := fs.WalkDir(htmlFS, "html", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if d.IsDir() {
-			newT, err := t.ParseFS(htmlFS, path+"/*.html")
+		if !d.IsDir() && strings.HasSuffix(path, ".html") {
+			// Parse individual HTML files
+			newT, err := t.ParseFS(htmlFS, path)
 			if err != nil {
-				// ignore
+				// Log but don't fail on individual file errors
+				logger.Warning("Failed to parse template:", path, err)
 				return nil
 			}
 			t = newT
