@@ -167,10 +167,14 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 
 	// Log all parsed template names for debugging
 	logger.Info("Parsed", len(t.Templates()), "templates")
-	for _, tmpl := range t.Templates() {
-		name := tmpl.Name()
-		if name != "" {
-			logger.Info("Template:", name)
+
+	// Check for required template definitions
+	requiredDefs := []string{"page/head_start", "page/head_end", "page/body_start", "page/body_end", "page/body_scripts"}
+	for _, defName := range requiredDefs {
+		if t.Lookup(defName) == nil {
+			logger.Warning("Required template definition not found:", defName)
+		} else {
+			logger.Info("Template definition found:", defName)
 		}
 	}
 
@@ -179,7 +183,7 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 	// So "html/nodes.html" becomes "nodes.html" automatically
 	// No need to create aliases - templates already have the correct names
 
-	// Verify that required templates exist
+	// Verify that required templates exist and can be executed
 	requiredTemplates := []string{"nodes.html", "multi_subscriptions.html", "map.html", "index.html", "login.html"}
 	for _, reqName := range requiredTemplates {
 		if t.Lookup(reqName) == nil {
@@ -188,10 +192,22 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 			logger.Info("Template found:", reqName)
 			// Try to execute the template to check for errors
 			var buf strings.Builder
-			testData := gin.H{"base_path": "/", "cur_ver": "test", "host": "test", "title": "test"}
+			testData := gin.H{
+				"base_path":   "/",
+				"cur_ver":     "test",
+				"host":        "test",
+				"title":       "test",
+				"request_uri": "/test",
+			}
 			err := t.ExecuteTemplate(&buf, reqName, testData)
 			if err != nil {
 				logger.Warning("Template execution test failed for", reqName, ":", err)
+				logger.Warning("Error details:", err.Error())
+			} else {
+				logger.Info("Template execution test passed for", reqName, "output length:", buf.Len())
+				if buf.Len() == 0 {
+					logger.Warning("Template", reqName, "executed but produced empty output!")
+				}
 			}
 		}
 	}
