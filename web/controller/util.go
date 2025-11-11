@@ -87,6 +87,13 @@ func html(c *gin.Context, name string, title string, data gin.H) {
 
 	logger.Info("Rendering template:", name, "for path:", c.Request.URL.Path)
 	c.HTML(http.StatusOK, name, getContext(data))
+
+	// Log response status after rendering
+	if c.Writer.Written() {
+		logger.Info("Template rendered successfully:", name, "status:", c.Writer.Status(), "size:", c.Writer.Size())
+	} else {
+		logger.Warning("Template rendered but no response written:", name)
+	}
 }
 
 // getContext adds version and other context data to the provided gin.H.

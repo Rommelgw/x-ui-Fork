@@ -167,6 +167,13 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 
 	// Log all parsed template names for debugging
 	logger.Info("Parsed", len(t.Templates()), "templates")
+	// Log template names to see what ParseFS actually creates
+	for _, tmpl := range t.Templates() {
+		name := tmpl.Name()
+		if name != "" && (strings.HasSuffix(name, "nodes.html") || strings.HasSuffix(name, "index.html") || strings.HasSuffix(name, "map.html") || strings.HasSuffix(name, "multi_subscriptions.html")) {
+			logger.Info("Found template with name:", name)
+		}
+	}
 
 	// Check for required template definitions
 	requiredDefs := []string{"page/head_start", "page/head_end", "page/body_start", "page/body_end", "page/body_scripts"}
@@ -178,10 +185,38 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 		}
 	}
 
-	// Templates are already parsed with correct names (without "html/" prefix)
-	// This is because ParseFS uses file names as template names
-	// So "html/nodes.html" becomes "nodes.html" automatically
-	// No need to create aliases - templates already have the correct names
+	// ParseFS creates template names with full paths like "html/nodes.html"
+	// But Gin expects short names like "nodes.html"
+	// We need to create aliases for root templates
+	var rootTemplates []struct {
+		fullName  string
+		shortName string
+	}
+	for _, tmpl := range t.Templates() {
+		name := tmpl.Name()
+		if name != "" && strings.HasPrefix(name, "html/") && !strings.Contains(name[len("html/"):], "/") {
+			shortName := name[len("html/"):]
+			rootTemplates = append(rootTemplates, struct {
+				fullName  string
+				shortName string
+			}{fullName: name, shortName: shortName})
+		}
+	}
+
+	// Add aliases for root templates
+	for _, rt := range rootTemplates {
+		if t.Lookup(rt.shortName) == nil {
+			origTmpl := t.Lookup(rt.fullName)
+			if origTmpl != nil {
+				_, err := t.AddParseTree(rt.shortName, origTmpl.Tree)
+				if err != nil {
+					logger.Warning("Failed to add template alias:", rt.fullName, "->", rt.shortName, err)
+				} else {
+					logger.Info("Added template alias:", rt.fullName, "->", rt.shortName)
+				}
+			}
+		}
+	}
 
 	// Verify that required templates exist and can be executed
 	requiredTemplates := []string{"nodes.html", "multi_subscriptions.html", "map.html", "index.html", "login.html"}
