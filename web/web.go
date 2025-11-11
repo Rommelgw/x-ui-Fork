@@ -144,7 +144,7 @@ func (s *Server) getHtmlFiles() ([]string, error) {
 // template set for production usage.
 func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, error) {
 	t := template.New("").Funcs(funcMap)
-	
+
 	// Parse all HTML files recursively
 	err := fs.WalkDir(htmlFS, "html", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -152,8 +152,19 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 		}
 
 		if !d.IsDir() && strings.HasSuffix(path, ".html") {
-			// Parse individual HTML files
-			newT, err := t.ParseFS(htmlFS, path)
+			// Extract filename from path (e.g., "html/nodes.html" -> "nodes.html")
+			// Gin expects template names without the "html/" prefix
+			parts := strings.Split(path, "/")
+			templateName := parts[len(parts)-1]
+
+			// Parse the file and name it correctly
+			content, err := fs.ReadFile(htmlFS, path)
+			if err != nil {
+				logger.Warning("Failed to read template:", path, err)
+				return nil
+			}
+
+			newT, err := t.New(templateName).Parse(string(content))
 			if err != nil {
 				// Log but don't fail on individual file errors
 				logger.Warning("Failed to parse template:", path, err)
