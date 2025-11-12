@@ -159,12 +159,17 @@ func html(c *gin.Context, name string, title string, data gin.H) {
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error("Panic during template rendering:", name, "error:", r)
+			// If panic occurred, try to send error response
+			if !c.Writer.Written() {
+				c.String(http.StatusInternalServerError, "Template rendering error")
+			}
 		}
 	}()
 
 	// Render template directly without any wrapper to avoid interfering with gzip middleware
-	// The wrapper was causing issues with gzip compression completion
-	c.HTML(http.StatusOK, name, getContext(data))
+	// Store size before rendering to detect if response was written
+	contextData := getContext(data)
+	c.HTML(http.StatusOK, name, contextData)
 
 	// Log response status after rendering
 	if c.Writer.Written() {
@@ -179,6 +184,8 @@ func html(c *gin.Context, name string, title string, data gin.H) {
 			if c.IsAborted() {
 				logger.Error("Request was aborted for template:", name)
 			}
+			// Log response headers for debugging
+			logger.Error("Response headers for", name, ":", c.Writer.Header())
 		}
 	} else {
 		logger.Warning("Template rendered but no response written:", name)
