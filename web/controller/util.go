@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"bufio"
 	"net"
 	"net/http"
 	"strings"
@@ -15,14 +16,61 @@ import (
 // responseWriterWrapper wraps gin.ResponseWriter to intercept writes
 type responseWriterWrapper struct {
 	gin.ResponseWriter
-	onWrite func([]byte) (int, error)
+	onWrite      func([]byte) (int, error)
+	totalWritten int
 }
 
 func (w *responseWriterWrapper) Write(p []byte) (int, error) {
+	w.totalWritten += len(p)
 	if w.onWrite != nil {
 		return w.onWrite(p)
 	}
 	return w.ResponseWriter.Write(p)
+}
+
+// Delegate all other ResponseWriter methods to the underlying writer
+func (w *responseWriterWrapper) WriteHeader(statusCode int) {
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *responseWriterWrapper) WriteString(s string) (int, error) {
+	w.totalWritten += len(s)
+	if w.onWrite != nil {
+		w.onWrite([]byte(s))
+	}
+	return w.ResponseWriter.WriteString(s)
+}
+
+func (w *responseWriterWrapper) Status() int {
+	return w.ResponseWriter.Status()
+}
+
+func (w *responseWriterWrapper) Size() int {
+	return w.ResponseWriter.Size()
+}
+
+func (w *responseWriterWrapper) Written() bool {
+	return w.ResponseWriter.Written()
+}
+
+func (w *responseWriterWrapper) Header() http.Header {
+	return w.ResponseWriter.Header()
+}
+
+func (w *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return w.ResponseWriter.Hijack()
+}
+
+func (w *responseWriterWrapper) CloseNotify() <-chan bool {
+	return w.ResponseWriter.CloseNotify()
+}
+
+func (w *responseWriterWrapper) Flush() {
+	w.ResponseWriter.Flush()
+}
+
+func (w *responseWriterWrapper) Pusher() http.Pusher {
+	return w.ResponseWriter.Pusher()
 }
 
 func min(a, b int) int {
@@ -106,30 +154,27 @@ func html(c *gin.Context, name string, title string, data gin.H) {
 	data["base_path"] = c.GetString("base_path")
 
 	logger.Info("Rendering template:", name, "for path:", c.Request.URL.Path)
-	
+
 	// Wrap HTML rendering to catch small responses and errors
+	// Don't restore the original writer - let the wrapper stay until request completes
 	originalWriter := c.Writer
-	var totalWritten int
-	c.Writer = &responseWriterWrapper{
+	wrapper := &responseWriterWrapper{
 		ResponseWriter: originalWriter,
 		onWrite: func(p []byte) (int, error) {
-			totalWritten += len(p)
 			if len(p) < 100 && !strings.Contains(string(p), "<!DOCTYPE") {
 				logger.Warning("Template", name, "rendered suspiciously small content:", len(p), "bytes, first 50 chars:", string(p[:min(len(p), 50)]))
 			}
 			return originalWriter.Write(p)
 		},
 	}
-	
+	c.Writer = wrapper
+
 	c.HTML(http.StatusOK, name, getContext(data))
-	
-	// Restore original writer
-	c.Writer = originalWriter
-	
+
 	// Log response status after rendering
-	if c.Writer.Written() {
-		size := c.Writer.Size()
-		logger.Info("Template rendered successfully:", name, "status:", c.Writer.Status(), "size:", size, "totalWritten:", totalWritten)
+	if wrapper.Written() {
+		size := wrapper.Size()
+		logger.Info("Template rendered successfully:", name, "status:", wrapper.Status(), "size:", size, "totalWritten:", wrapper.totalWritten)
 		if size < 100 {
 			logger.Warning("Template", name, "rendered suspiciously small content:", size, "bytes")
 		}
