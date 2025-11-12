@@ -278,14 +278,28 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 				// For problematic templates, check if component templates are included in output
 				if reqName == "nodes.html" || reqName == "multi_subscriptions.html" || reqName == "map.html" {
 					output := buf.String()
-					if !strings.Contains(output, "a-theme-switch") {
+					hasThemeSwitch := strings.Contains(output, "a-theme-switch") || strings.Contains(output, "Vue.component('a-theme-switch'")
+					hasSidebar := strings.Contains(output, "a-sidebar") || strings.Contains(output, "Vue.component('a-sidebar'")
+					hasVueComponent := strings.Contains(output, "Vue.component")
+					hasVueInit := strings.Contains(output, "new Vue({") || strings.Contains(output, "const app = new Vue({")
+					hasScripts := strings.Contains(output, "vue.min.js") && strings.Contains(output, "antd.min.js")
+
+					logger.Info("Template", reqName, "component check - themeSwitch:", hasThemeSwitch, "sidebar:", hasSidebar, "Vue.component:", hasVueComponent, "Vue.init:", hasVueInit, "scripts:", hasScripts)
+
+					if !hasThemeSwitch {
 						logger.Warning("Template", reqName, "output does not contain 'a-theme-switch' component")
 					}
-					if !strings.Contains(output, "a-sidebar") {
+					if !hasSidebar {
 						logger.Warning("Template", reqName, "output does not contain 'a-sidebar' component")
 					}
-					if !strings.Contains(output, "Vue.component") {
+					if !hasVueComponent {
 						logger.Warning("Template", reqName, "output does not contain 'Vue.component' registration")
+					}
+					if !hasVueInit {
+						logger.Warning("Template", reqName, "output does not contain Vue initialization")
+					}
+					if !hasScripts {
+						logger.Warning("Template", reqName, "output does not contain required script tags")
 					}
 				}
 			}
