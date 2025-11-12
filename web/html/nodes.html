@@ -74,18 +74,34 @@
 {{template "component/aThemeSwitch" .}}
 <script>
   // Ensure Vue and required dependencies are available
+  console.log('Checking dependencies...');
   if (typeof Vue === 'undefined') {
     console.error('Vue is not loaded');
+  } else {
+    console.log('Vue is loaded, version:', Vue.version);
   }
   if (typeof MediaQueryMixin === 'undefined') {
     console.error('MediaQueryMixin is not loaded');
+  } else {
+    console.log('MediaQueryMixin is loaded');
   }
   if (typeof themeSwitcher === 'undefined') {
     console.error('themeSwitcher is not defined');
+  } else {
+    console.log('themeSwitcher is defined');
+  }
+  
+  // Check if #app element exists
+  const appEl = document.getElementById('app');
+  if (!appEl) {
+    console.error('Element #app not found!');
+  } else {
+    console.log('Element #app found');
   }
   
   try {
-    new Vue({
+    console.log('Initializing Vue app...');
+    const vueApp = new Vue({
       delimiters: ['[[', ']]'],
       el: '#app',
       mixins: [MediaQueryMixin],
@@ -244,15 +260,21 @@
         }
       }
     },
-    mounted(){ this.refresh(); }
+    mounted(){ 
+      console.log('Vue app mounted successfully');
+      this.refresh(); 
+    }
   });
+  console.log('Vue app instance created:', vueApp);
   } catch (e) {
     console.error('Error initializing Vue app:', e);
+    console.error('Error stack:', e.stack);
     // Remove v-cloak to show content even if Vue fails
     const app = document.getElementById('app');
     if (app) {
       app.removeAttribute('v-cloak');
       app.style.display = 'block';
+      console.log('Removed v-cloak from #app');
     }
   }
 </script>

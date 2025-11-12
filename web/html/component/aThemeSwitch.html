@@ -131,14 +131,28 @@
       
       // Extract content from <template> tag if present
       function extractTemplateContent(html) {
-        if (!html) return '';
+        if (!html) {
+          console.warn('extractTemplateContent: empty HTML');
+          return '';
+        }
         // Remove <template> tags and get inner content
         const match = html.match(/<template[^>]*>([\s\S]*)<\/template>/);
-        return match ? match[1].trim() : html.trim();
+        if (match) {
+          const content = match[1].trim();
+          console.log('extractTemplateContent: extracted template content, length:', content.length);
+          return content;
+        } else {
+          console.warn('extractTemplateContent: no <template> tag found, using raw HTML');
+          return html.trim();
+        }
       }
       
+      const themeSwitchTemplate = extractTemplateContent(themeSwitchTemplateEl ? themeSwitchTemplateEl.innerHTML : '');
+      const themeSwitchLoginTemplate = extractTemplateContent(themeSwitchLoginTemplateEl ? themeSwitchLoginTemplateEl.innerHTML : '');
+      
+      console.log('Registering Vue component a-theme-switch with template length:', themeSwitchTemplate.length);
       Vue.component('a-theme-switch', {
-        template: extractTemplateContent(themeSwitchTemplateEl ? themeSwitchTemplateEl.innerHTML : ''),
+        template: themeSwitchTemplate,
         data: () => ({
           themeSwitcher
         }),
@@ -152,8 +166,9 @@
           }
         }
       });
+      console.log('Registering Vue component a-theme-switch-login with template length:', themeSwitchLoginTemplate.length);
       Vue.component('a-theme-switch-login', {
-        template: extractTemplateContent(themeSwitchLoginTemplateEl ? themeSwitchLoginTemplateEl.innerHTML : ''),
+        template: themeSwitchLoginTemplate,
         data: () => ({
           themeSwitcher
         }),
@@ -167,8 +182,10 @@
           }
         }
       });
+      console.log('Vue components a-theme-switch and a-theme-switch-login registered successfully');
     } catch (e) {
       console.error('Error registering Vue components:', e);
+      console.error('Error stack:', e.stack);
     }
   } else {
     console.error('Vue is not available when trying to register theme switch components');
