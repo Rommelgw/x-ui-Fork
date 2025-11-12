@@ -204,7 +204,9 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 	}
 
 	// Add aliases for root templates
+	logger.Info("Found", len(rootTemplates), "root templates to process")
 	for _, rt := range rootTemplates {
+		logger.Info("Processing root template:", rt.fullName, "->", rt.shortName)
 		if t.Lookup(rt.shortName) == nil {
 			origTmpl := t.Lookup(rt.fullName)
 			if origTmpl != nil {
@@ -213,6 +215,12 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 					logger.Warning("Failed to add template alias:", rt.fullName, "->", rt.shortName, err)
 				} else {
 					logger.Info("Added template alias:", rt.fullName, "->", rt.shortName)
+					// Verify the alias works
+					if aliasTmpl := t.Lookup(rt.shortName); aliasTmpl != nil {
+						logger.Info("Alias verified:", rt.shortName)
+					} else {
+						logger.Warning("Alias NOT verified:", rt.shortName)
+					}
 				}
 			} else {
 				logger.Warning("Original template not found for alias:", rt.fullName)
