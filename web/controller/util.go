@@ -106,28 +106,30 @@ func html(c *gin.Context, name string, title string, data gin.H) {
 	data["base_path"] = c.GetString("base_path")
 
 	logger.Info("Rendering template:", name, "for path:", c.Request.URL.Path)
-
-	// Wrap HTML rendering to catch small responses
+	
+	// Wrap HTML rendering to catch small responses and errors
 	originalWriter := c.Writer
+	var totalWritten int
 	c.Writer = &responseWriterWrapper{
 		ResponseWriter: originalWriter,
 		onWrite: func(p []byte) (int, error) {
+			totalWritten += len(p)
 			if len(p) < 100 && !strings.Contains(string(p), "<!DOCTYPE") {
 				logger.Warning("Template", name, "rendered suspiciously small content:", len(p), "bytes, first 50 chars:", string(p[:min(len(p), 50)]))
 			}
 			return originalWriter.Write(p)
 		},
 	}
-
+	
 	c.HTML(http.StatusOK, name, getContext(data))
-
+	
 	// Restore original writer
 	c.Writer = originalWriter
-
+	
 	// Log response status after rendering
 	if c.Writer.Written() {
 		size := c.Writer.Size()
-		logger.Info("Template rendered successfully:", name, "status:", c.Writer.Status(), "size:", size)
+		logger.Info("Template rendered successfully:", name, "status:", c.Writer.Status(), "size:", size, "totalWritten:", totalWritten)
 		if size < 100 {
 			logger.Warning("Template", name, "rendered suspiciously small content:", size, "bytes")
 		}
