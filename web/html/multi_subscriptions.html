@@ -52,7 +52,7 @@
 {{template "component/aThemeSwitch" .}}
 <script>
 try {
-  const { createApp, ref, reactive, onMounted, h } = Vue;
+  const { createApp, ref, reactive, onMounted, getCurrentInstance, h } = Vue;
 
   if (!themeSwitcher) throw new Error('themeSwitcher is not defined');
 
@@ -62,6 +62,10 @@ try {
   const vueApp = createApp({
     delimiters: ['[[', ']]'],
     setup() {
+      const internalInstance = getCurrentInstance();
+      const $t = (...args) => internalInstance.appContext.config.globalProperties.$t(...args);
+      const $message = internalInstance.appContext.config.globalProperties.$message;
+
       // --- reactive state ---
       const items = ref([]);
       const loadingStates = reactive({ spinning: false });
@@ -71,19 +75,17 @@ try {
       const v = reactive({ name: {}, subId: {}, nodeIds: {} });
 
       // --- methods ---
-      const clearValidation = () => {
-        v.name = {}; v.subId = {}; v.nodeIds = {};
-      };
+      const clearValidation = () => { v.name = {}; v.subId = {}; v.nodeIds = {}; };
 
       const validate = () => {
         let ok = true;
         clearValidation();
-        if (!form.name) { v.name = { status: 'error', help: vueApp.config.globalProperties.$t('validation.required') }; ok = false; }
-        if (form.subId && (form.subId.length < 3 || form.subId.length > 64)) { v.subId = { status: 'error', help: vueApp.config.globalProperties.$t('validation.invalidSubId') }; ok = false; }
+        if (!form.name) { v.name = { status: 'error', help: $t('validation.required') }; ok = false; }
+        if (form.subId && (form.subId.length < 3 || form.subId.length > 64)) { v.subId = { status: 'error', help: $t('validation.invalidSubId') }; ok = false; }
         try {
           const arr = JSON.parse(form.nodeIds || '[]');
-          if (!Array.isArray(arr) || !arr.every(x => Number.isInteger(x))) { v.nodeIds = { status: 'error', help: vueApp.config.globalProperties.$t('validation.invalidNodeIds') }; ok = false; }
-        } catch { v.nodeIds = { status: 'error', help: vueApp.config.globalProperties.$t('validation.invalidNodeIds') }; ok = false; }
+          if (!Array.isArray(arr) || !arr.every(x => Number.isInteger(x))) { v.nodeIds = { status: 'error', help: $t('validation.invalidNodeIds') }; ok = false; }
+        } catch { v.nodeIds = { status: 'error', help: $t('validation.invalidNodeIds') }; ok = false; }
         return ok;
       };
 
@@ -91,9 +93,9 @@ try {
         try {
           const msg = await HttpUtil.get('/panel/api/multi-subscriptions/');
           items.value = msg.success ? (msg.obj || []) : [];
-          if (!msg.success) vueApp.config.globalProperties.$message.error(vueApp.config.globalProperties.$t('validation.loadFailed'));
+          if (!msg.success) $message.error($t('validation.loadFailed'));
         } catch {
-          vueApp.config.globalProperties.$message.error(vueApp.config.globalProperties.$t('validation.loadFailed'));
+          $message.error($t('validation.loadFailed'));
         }
       };
 
@@ -107,48 +109,48 @@ try {
         const res = form.id
           ? await HttpUtil.post('/panel/api/multi-subscriptions/' + form.id, payload)
           : await HttpUtil.post('/panel/api/multi-subscriptions/', payload);
-        if (res && res.success) { vueApp.config.globalProperties.$message.success(vueApp.config.globalProperties.$t('validation.saveSuccess')); modals.edit.visible = false; refresh(); }
-        else { vueApp.config.globalProperties.$message.error(vueApp.config.globalProperties.$t('validation.saveFailed')); }
+        if (res && res.success) { $message.success($t('validation.saveSuccess')); modals.edit.visible = false; refresh(); }
+        else { $message.error($t('validation.saveFailed')); }
       };
 
       const del = async r => {
         const res = await HttpUtil.post('/panel/api/multi-subscriptions/' + r.id + '/delete');
-        vueApp.config.globalProperties.$message[res.success ? 'success' : 'error'](res.success ? vueApp.config.globalProperties.$t('validation.saveSuccess') : vueApp.config.globalProperties.$t('validation.saveFailed'));
+        $message[res.success ? 'success' : 'error'](res.success ? $t('validation.saveSuccess') : $t('validation.saveFailed'));
         refresh();
       };
 
       const copySubUrl = async r => {
         try {
           const res = await HttpUtil.get('/panel/api/multi-subscriptions/' + r.id + '/subscription-url');
-          if (res?.success && res.obj?.url) { await navigator.clipboard.writeText(res.obj.url); vueApp.config.globalProperties.$message.success(vueApp.config.globalProperties.$t('copy') + ' ' + vueApp.config.globalProperties.$t('success')); }
-          else vueApp.config.globalProperties.$message.error(vueApp.config.globalProperties.$t('validation.loadFailed'));
-        } catch { vueApp.config.globalProperties.$message.error(vueApp.config.globalProperties.$t('validation.loadFailed')); }
+          if (res?.success && res.obj?.url) { await navigator.clipboard.writeText(res.obj.url); $message.success($t('copy') + ' ' + $t('success')); }
+          else $message.error($t('validation.loadFailed'));
+        } catch { $message.error($t('validation.loadFailed')); }
       };
 
       const enableTpl = r => h('a-tag', { color: r.enable ? 'green' : 'default' }, [
         h('a-icon', { type: r.enable ? 'check-circle' : 'close-circle', style: 'margin-right:4px' }),
-        r.enable ? vueApp.config.globalProperties.$t('yes') : 'No'
+        r.enable ? $t('yes') : 'No'
       ]);
 
       const actionTpl = r => h('span', [
-        h('a-tooltip', { title: vueApp.config.globalProperties.$t('pages.multiSubscriptions.edit') }, [
+        h('a-tooltip', { title: $t('pages.multiSubscriptions.edit') }, [
           h('a-button', { type: 'link', size: 'small', onClick: () => openEdit(r) }, [
             h('a-icon', { type: 'edit' }),
-            h('span', { style: 'margin-left:4px' }, vueApp.config.globalProperties.$t('pages.multiSubscriptions.edit'))
+            h('span', { style: 'margin-left:4px' }, $t('pages.multiSubscriptions.edit'))
           ])
         ]),
         h('a-divider', { type: 'vertical' }),
-        h('a-tooltip', { title: vueApp.config.globalProperties.$t('copy') }, [
+        h('a-tooltip', { title: $t('copy') }, [
           h('a-button', { type: 'link', size: 'small', onClick: () => copySubUrl(r) }, [
             h('a-icon', { type: 'copy' }),
-            h('span', { style: 'margin-left:4px' }, vueApp.config.globalProperties.$t('copy'))
+            h('span', { style: 'margin-left:4px' }, $t('copy'))
           ])
         ]),
         h('a-divider', { type: 'vertical' }),
-        h('a-popconfirm', { title: vueApp.config.globalProperties.$t('deleteConfirm'), okText: vueApp.config.globalProperties.$t('yes'), cancelText: vueApp.config.globalProperties.$t('no'), onConfirm: () => del(r) }, [
+        h('a-popconfirm', { title: $t('deleteConfirm'), okText: $t('yes'), cancelText: $t('no'), onConfirm: () => del(r) }, [
           h('a-button', { type: 'link', size: 'small', danger: true }, [
             h('a-icon', { type: 'delete' }),
-            h('span', { style: 'margin-left:4px' }, vueApp.config.globalProperties.$t('pages.multiSubscriptions.delete'))
+            h('span', { style: 'margin-left:4px' }, $t('pages.multiSubscriptions.delete'))
           ])
         ])
       ]);
@@ -160,10 +162,8 @@ try {
         refresh();
       });
 
-      return {
-        items, loadingStates, loadingTip, modals, form, v,
-        openAdd, openEdit, save, del, copySubUrl, refresh, enableTpl, actionTpl
-      };
+      return { items, loadingStates, loadingTip, modals, form, v,
+               openAdd, openEdit, save, del, copySubUrl, refresh, enableTpl, actionTpl };
     }
   });
 
@@ -172,9 +172,10 @@ try {
 } catch (e) {
   console.error('Vue 3 Composition API initialization error:', e);
   const app = document.getElementById('app');
-  if (app) { app.removeAttribute('v-cloak'); app.style.display = 'block'; }
+  if(app){ app.removeAttribute('v-cloak'); app.style.display='block'; }
 }
 </script>
+
 
 
 
