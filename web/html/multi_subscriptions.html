@@ -6,60 +6,60 @@
   <a-sidebar></a-sidebar>
   <a-layout id="content-layout">
     <a-layout-content>
-      <a-spin :spinning="loadingStates.spinning" :delay="200" :tip="$t('loading')">
+      <a-spin :spinning="loadingStates.spinning" :delay="200" :tip="t('loading')">
         <a-row :gutter="[16,16]">
           <a-col :span="24">
-            <a-page-header :title="$t('pages.multiSubscriptions.title')">
+            <a-page-header :title="t('pages.multiSubscriptions.title')">
               <template #extra>
-                <a-button type="primary" icon="plus" @click="openAdd">{{ $t('pages.multiSubscriptions.add') }}</a-button>
-                <a-button icon="sync" @click="refresh">{{ $t('pages.nodes.refresh') }}</a-button>
+                <a-button type="primary" icon="plus" @click="openAdd" v-text="t('pages.multiSubscriptions.add')"></a-button>
+                <a-button icon="sync" @click="refresh" v-text="t('pages.nodes.refresh')"></a-button>
               </template>
             </a-page-header>
           </a-col>
 
           <a-col :span="24">
             <a-table :data-source="items" :row-key="'id'" :pagination="false">
-              <a-table-column :title="$t('pages.multiSubscriptions.name')" data-index="name" key="name"/>
-              <a-table-column :title="$t('pages.multiSubscriptions.subId')" data-index="subId" key="subId"/>
-              <a-table-column :title="$t('pages.multiSubscriptions.nodes')" key="nodes" :customRender="(_, r) => r.nodeIds"/>
-              <a-table-column :title="$t('pages.multiSubscriptions.remark')" data-index="remark" key="remark"/>
-              <a-table-column :title="$t('pages.multiSubscriptions.enabled')" key="enable" :customRender="(_, r) => enableTpl(r)"/>
-              <a-table-column :title="$t('pages.nodes.actions')" key="action" :customRender="(_, r) => actionTpl(r)"/>
+              <a-table-column :title="t('pages.multiSubscriptions.name')" data-index="name" key="name"/>
+              <a-table-column :title="t('pages.multiSubscriptions.subId')" data-index="subId" key="subId"/>
+              <a-table-column :title="t('pages.multiSubscriptions.nodes')" key="nodes" :customRender="(_, r) => r.nodeIds"/>
+              <a-table-column :title="t('pages.multiSubscriptions.remark')" data-index="remark" key="remark"/>
+              <a-table-column :title="t('pages.multiSubscriptions.enabled')" key="enable" :customRender="(_, r) => enableTpl(r)"/>
+              <a-table-column :title="t('pages.nodes.actions')" key="action" :customRender="(_, r) => actionTpl(r)"/>
             </a-table>
           </a-col>
         </a-row>
 
         <a-modal
           :visible="modals.edit.visible"
-          :title="$t('pages.multiSubscriptions.title')"
+          :title="t('pages.multiSubscriptions.title')"
           :footer="null"
           @cancel="modals.edit.visible = false"
         >
           <a-form :label-col="{span:6}" :wrapper-col="{span:16}">
-            <a-form-item :label="$t('pages.multiSubscriptions.name')" :validate-status="v.name.status" :help="v.name.help">
-              <a-input v-model="form.name" :placeholder="$t('pages.nodes.namePlaceholder')"/>
+            <a-form-item :label="t('pages.multiSubscriptions.name')" :validate-status="v.name.status" :help="v.name.help">
+              <a-input v-model="form.name" :placeholder="t('pages.nodes.namePlaceholder')"/>
             </a-form-item>
 
-            <a-form-item :label="$t('pages.multiSubscriptions.subId')" :validate-status="v.subId.status" :help="v.subId.help">
-              <a-input v-model="form.subId" :placeholder="$t('pages.multiSubscriptions.subIdPlaceholder')"/>
+            <a-form-item :label="t('pages.multiSubscriptions.subId')" :validate-status="v.subId.status" :help="v.subId.help">
+              <a-input v-model="form.subId" :placeholder="t('pages.multiSubscriptions.subIdPlaceholder')"/>
             </a-form-item>
 
-            <a-form-item :label="$t('pages.multiSubscriptions.nodeIdsLabel')" :validate-status="v.nodeIds.status" :help="v.nodeIds.help">
-              <a-input v-model="form.nodeIds" :placeholder="$t('pages.multiSubscriptions.nodeIdsPlaceholder')"/>
+            <a-form-item :label="t('pages.multiSubscriptions.nodeIdsLabel')" :validate-status="v.nodeIds.status" :help="v.nodeIds.help">
+              <a-input v-model="form.nodeIds" :placeholder="t('pages.multiSubscriptions.nodeIdsPlaceholder')"/>
             </a-form-item>
 
-            <a-form-item :label="$t('pages.multiSubscriptions.remark')">
-              <a-textarea v-model="form.remark" :placeholder="$t('pages.multiSubscriptions.remarkPlaceholder')" :auto-size="{minRows:2,maxRows:4}"/>
+            <a-form-item :label="t('pages.multiSubscriptions.remark')">
+              <a-textarea v-model="form.remark" :placeholder="t('pages.multiSubscriptions.remarkPlaceholder')" :auto-size="{minRows:2,maxRows:4}"/>
             </a-form-item>
 
-            <a-form-item :label="$t('pages.multiSubscriptions.enabled')">
+            <a-form-item :label="t('pages.multiSubscriptions.enabled')">
               <a-switch v-model="form.enable"/>
             </a-form-item>
 
             <a-form-item :wrapper-col="{span:16, offset:6}">
               <a-space>
-                <a-button type="primary" @click="save">{{ $t('update') }}</a-button>
-                <a-button @click="modals.edit.visible=false">{{ $t('cancel') }}</a-button>
+                <a-button type="primary" @click="save" v-text="t('update')"></a-button>
+                <a-button @click="modals.edit.visible=false" v-text="t('cancel')"></a-button>
               </a-space>
             </a-form-item>
           </a-form>
@@ -74,137 +74,208 @@
 {{template "component/aThemeSwitch" .}}
 
 <script>
-  const appEl = document.getElementById('app');
-  if (!appEl) {
-    console.error('Element #app not found!');
-  }
+  // --- SERVER-SIDE TRANSLATIONS MAP ---
+  // Заполняем объект T сервеными переводами (экранированными JS-строками).
+  // printf "%q" обеспечивает корректное экранирование кавычек/спецсимволов в Go шаблоне.
+  const T = {
+    "loading": {{ printf "%q" (i18n "loading") }},
+    "update": {{ printf "%q" (i18n "update") }},
+    "cancel": {{ printf "%q" (i18n "cancel") }},
 
-  new Vue({
-    delimiters: ['[[', ']]'],
-    el: '#app',
-    mixins: [MediaQueryMixin],
-    data: {
-      themeSwitcher,
-      loadingStates: { spinning: false },
-      loadingTip: '',
-      items: [],
-      modals: { edit: { visible: false } },
-      form: { id:null, name:'', subId:'', nodeIds:'[]', remark:'', enable:true },
-      v: { name:{}, subId:{}, nodeIds:{} },
-    },
-    methods: {
-      async refresh() {
-        try {
-          const msg = await HttpUtil.get('/panel/api/multi-subscriptions/');
-          if (msg.success) this.items = msg.obj || [];
-          else this.$message.error(this.$t('validation.loadFailed'));
-        } catch {
-          this.$message.error(this.$t('validation.loadFailed'));
-        }
-      },
-      openAdd() {
-        this.form = { id:null, name:'', subId:'', nodeIds:'[]', remark:'', enable:true };
-        this.clearValidation();
-        this.modals.edit.visible = true;
-      },
-      openEdit(r) {
-        this.form = Object.assign({}, r);
-        if (typeof this.form.nodeIds !== 'string') this.form.nodeIds = JSON.stringify(this.form.nodeIds || []);
-        this.clearValidation();
-        this.modals.edit.visible = true;
-      },
-      clearValidation() { this.v = { name:{}, subId:{}, nodeIds:{} }; },
-      validate() {
-        let ok = true;
-        this.clearValidation();
-        if (!this.form.name) { this.v.name = {status:'error', help:this.$t('validation.required')}; ok = false; }
-        try {
-          const arr = JSON.parse(this.form.nodeIds || '[]');
-          if (!Array.isArray(arr)) { throw new Error(); }
-        } catch {
-          this.v.nodeIds = {status:'error', help:this.$t('validation.invalidNodeIds')}; ok = false;
-        }
-        return ok;
-      },
-      async save() {
-        if (!this.validate()) return;
-        let res;
-        const payload = Object.assign({}, this.form);
-        try { payload.nodeIds = JSON.parse(this.form.nodeIds || '[]'); } catch {}
-        if (this.form.id)
-          res = await HttpUtil.post(`/panel/api/multi-subscriptions/${this.form.id}`, payload);
-        else
-          res = await HttpUtil.post('/panel/api/multi-subscriptions/', payload);
+    "pages.multiSubscriptions.title": {{ printf "%q" (i18n "pages.multiSubscriptions.title") }},
+    "pages.multiSubscriptions.add": {{ printf "%q" (i18n "pages.multiSubscriptions.add") }},
+    "pages.multiSubscriptions.name": {{ printf "%q" (i18n "pages.multiSubscriptions.name") }},
+    "pages.multiSubscriptions.subId": {{ printf "%q" (i18n "pages.multiSubscriptions.subId") }},
+    "pages.multiSubscriptions.nodes": {{ printf "%q" (i18n "pages.multiSubscriptions.nodes") }},
+    "pages.multiSubscriptions.remark": {{ printf "%q" (i18n "pages.multiSubscriptions.remark") }},
+    "pages.multiSubscriptions.enabled": {{ printf "%q" (i18n "pages.multiSubscriptions.enabled") }},
+    "pages.multiSubscriptions.nodeIdsLabel": {{ printf "%q" (i18n "pages.multiSubscriptions.nodeIdsLabel") }},
+    "pages.multiSubscriptions.nodeIdsPlaceholder": {{ printf "%q" (i18n "pages.multiSubscriptions.nodeIdsPlaceholder") }},
+    "pages.multiSubscriptions.subIdPlaceholder": {{ printf "%q" (i18n "pages.multiSubscriptions.subIdPlaceholder") }},
+    "pages.multiSubscriptions.remarkPlaceholder": {{ printf "%q" (i18n "pages.multiSubscriptions.remarkPlaceholder") }},
+    "pages.multiSubscriptions.edit": {{ printf "%q" (i18n "pages.multiSubscriptions.edit") }},
+    "pages.multiSubscriptions.delete": {{ printf "%q" (i18n "pages.multiSubscriptions.delete") }},
 
-        if (res && res.success) {
-          this.$message.success(this.$t('validation.saveSuccess'));
-          this.modals.edit.visible = false;
+    "pages.nodes.refresh": {{ printf "%q" (i18n "pages.nodes.refresh") }},
+    "pages.nodes.actions": {{ printf "%q" (i18n "pages.nodes.actions") }},
+    "pages.nodes.namePlaceholder": {{ printf "%q" (i18n "pages.nodes.namePlaceholder") }},
+
+    "validation.loadFailed": {{ printf "%q" (i18n "validation.loadFailed") }},
+    "validation.saveFailed": {{ printf "%q" (i18n "validation.saveFailed") }},
+    "validation.saveSuccess": {{ printf "%q" (i18n "validation.saveSuccess") }},
+    "validation.required": {{ printf "%q" (i18n "validation.required") }},
+    "validation.invalidSubId": {{ printf "%q" (i18n "validation.invalidSubId") }},
+    "validation.invalidNodeIds": {{ printf "%q" (i18n "validation.invalidNodeIds") }},
+
+    "copy": {{ printf "%q" (i18n "copy") }},
+    "success": {{ printf "%q" (i18n "success") }},
+    "yes": {{ printf "%q" (i18n "yes") }},
+    "no": {{ printf "%q" (i18n "no") }},
+    "deleteConfirm": {{ printf "%q" (i18n "deleteConfirm") }}
+  };
+
+  // --- Проверки зависимостей (полезно для отладки) ---
+  console.log('Checking dependencies...');
+  if (typeof Vue === 'undefined') console.error('Vue is not loaded');
+  if (typeof MediaQueryMixin === 'undefined') console.error('MediaQueryMixin is not loaded');
+  if (typeof themeSwitcher === 'undefined') console.error('themeSwitcher is not defined');
+
+  // --- Vue app ---
+  try {
+    const vueApp = new Vue({
+      // Если у вас шаблон сервера тоже использует {{ }}, вы можете сохранить эти делимитеры;
+      // в моём примере делимитеры оставляю стандартными (если вам нужны другие, настраивайте).
+      delimiters: ['[[', ']]'],
+      el: '#app',
+      mixins: [MediaQueryMixin],
+      data: {
+        themeSwitcher,
+        loadingStates: { spinning: false },
+        items: [],
+        modals: { edit: { visible: false } },
+        form: { id:null, name:'', subId:'', nodeIds:'[]', remark:'', enable:true },
+        v: { name:{}, subId:{}, nodeIds:{} },
+        // локальная карта переводов
+        T
+      },
+      methods: {
+        // универсальная функция доступа к строкам (если ключа нет — возвращает ключ)
+        t(key) { return this.T && this.T[key] ? this.T[key] : key; },
+
+        async refresh() {
+          try {
+            const msg = await HttpUtil.get('/panel/api/multi-subscriptions/');
+            if (msg.success) this.items = msg.obj || [];
+            else this.$message.error(this.t('validation.loadFailed'));
+          } catch (e) {
+            this.$message.error(this.t('validation.loadFailed'));
+          }
+        },
+        openAdd() {
+          this.form = { id:null, name:'', subId:'', nodeIds:'[]', remark:'', enable:true };
+          this.clearValidation();
+          this.modals.edit.visible = true;
+        },
+        openEdit(r) {
+          this.form = Object.assign({}, r);
+          if (typeof this.form.nodeIds !== 'string') this.form.nodeIds = JSON.stringify(this.form.nodeIds || []);
+          this.clearValidation();
+          this.modals.edit.visible = true;
+        },
+        clearValidation() { this.v = { name:{}, subId:{}, nodeIds:{} }; },
+        validate() {
+          let ok = true;
+          this.clearValidation();
+          if (!this.form.name) { this.v.name = { status: 'error', help: this.t('validation.required') }; ok = false; }
+          if (this.form.subId && (this.form.subId.length < 3 || this.form.subId.length > 64)) {
+            this.v.subId = { status: 'error', help: this.t('validation.invalidSubId') }; ok = false;
+          }
+          try {
+            const arr = JSON.parse(this.form.nodeIds || '[]');
+            if (!Array.isArray(arr) || !arr.every(x => Number.isInteger(x))) {
+              this.v.nodeIds = { status: 'error', help: this.t('validation.invalidNodeIds') }; ok = false;
+            }
+          } catch (e) {
+            this.v.nodeIds = { status: 'error', help: this.t('validation.invalidNodeIds') }; ok = false;
+          }
+          return ok;
+        },
+        async save() {
+          if (!this.validate()) return;
+          let res;
+          const payload = Object.assign({}, this.form);
+          try { payload.nodeIds = JSON.parse(this.form.nodeIds || '[]'); } catch (e) {}
+          if (this.form.id) res = await HttpUtil.post('/panel/api/multi-subscriptions/' + this.form.id, payload);
+          else res = await HttpUtil.post('/panel/api/multi-subscriptions/', payload);
+
+          if (res && res.success) {
+            this.$message.success(this.t('validation.saveSuccess'));
+            this.modals.edit.visible = false;
+            this.refresh();
+          } else {
+            this.$message.error(this.t('validation.saveFailed'));
+          }
+        },
+        async del(r) {
+          const res = await HttpUtil.post('/panel/api/multi-subscriptions/' + r.id + '/delete');
+          if (res && res.success) this.$message.success(this.t('validation.saveSuccess'));
+          else this.$message.error(this.t('validation.saveFailed'));
           this.refresh();
-        } else {
-          this.$message.error(this.$t('validation.saveFailed'));
+        },
+        async copySubUrl(r) {
+          try {
+            const res = await HttpUtil.get('/panel/api/multi-subscriptions/' + r.id + '/subscription-url');
+            if (res && res.success && res.obj && res.obj.url) {
+              await navigator.clipboard.writeText(res.obj.url);
+              this.$message.success(this.t('copy') + ' ' + this.t('success'));
+            } else {
+              this.$message.error(this.t('validation.loadFailed'));
+            }
+          } catch (e) {
+            this.$message.error(this.t('validation.loadFailed'));
+          }
+        },
+        enableTpl(r) {
+          return this.$createElement('a-tag', { props: { color: r.enable ? 'green' : 'default' } }, [
+            this.$createElement('a-icon', { props: { type: r.enable ? 'check-circle' : 'close-circle' }, style: 'margin-right: 4px' }),
+            r.enable ? this.t('yes') : this.t('no')
+          ]);
+        },
+        actionTpl(r) {
+          return this.$createElement('span', [
+            this.$createElement('a-tooltip', { props: { title: this.t('pages.multiSubscriptions.edit') } }, [
+              this.$createElement('a-button', {
+                props: { type: 'link', size: 'small' },
+                on: { click: () => this.openEdit(r) }
+              }, [
+                this.$createElement('a-icon', { props: { type: 'edit' } }),
+                this.$createElement('span', { style: 'margin-left: 4px' }, this.t('pages.multiSubscriptions.edit'))
+              ])
+            ]),
+            this.$createElement('a-divider', { props: { type: 'vertical' } }),
+            this.$createElement('a-tooltip', { props: { title: this.t('copy') } }, [
+              this.$createElement('a-button', {
+                props: { type: 'link', size: 'small' },
+                on: { click: () => this.copySubUrl(r) }
+              }, [
+                this.$createElement('a-icon', { props: { type: 'copy' } }),
+                this.$createElement('span', { style: 'margin-left: 4px' }, this.t('copy'))
+              ])
+            ]),
+            this.$createElement('a-divider', { props: { type: 'vertical' } }),
+            this.$createElement('a-popconfirm', {
+              props: {
+                title: this.t('deleteConfirm'),
+                okText: this.t('yes'),
+                cancelText: this.t('no')
+              },
+              on: { confirm: () => this.del(r) }
+            }, [
+              this.$createElement('a-button', { props: { type: 'link', size: 'small', danger: true } }, [
+                this.$createElement('a-icon', { props: { type: 'delete' } }),
+                this.$createElement('span', { style: 'margin-left: 4px' }, this.t('pages.multiSubscriptions.delete'))
+              ])
+            ])
+          ]);
         }
       },
-      async del(r) {
-        const res = await HttpUtil.post(`/panel/api/multi-subscriptions/${r.id}/delete`);
-        if (res.success) this.$message.success(this.$t('validation.saveSuccess'));
-        else this.$message.error(this.$t('validation.saveFailed'));
+      mounted() {
+        const app = document.getElementById('app');
+        if (app) app.removeAttribute('v-cloak');
         this.refresh();
-      },
-      async copySubUrl(r) {
-        try {
-          const res = await HttpUtil.get(`/panel/api/multi-subscriptions/${r.id}/subscription-url`);
-          if (res && res.success && res.obj?.url) {
-            await navigator.clipboard.writeText(res.obj.url);
-            this.$message.success(this.$t('copy') + ' ' + this.$t('success'));
-          } else this.$message.error(this.$t('validation.loadFailed'));
-        } catch {
-          this.$message.error(this.$t('validation.loadFailed'));
-        }
-      },
-      enableTpl(r) {
-        return this.$createElement('a-tag', { props: { color: r.enable ? 'green' : 'default' } }, [
-          this.$createElement('a-icon', { props: { type: r.enable ? 'check-circle' : 'close-circle' }, style: 'margin-right: 4px' }),
-          r.enable ? this.$t('yes') : this.$t('no')
-        ]);
-      },
-      actionTpl(r) {
-        return this.$createElement('span', [
-          this.$createElement('a-tooltip', { props: { title: this.$t('pages.multiSubscriptions.edit') } }, [
-            this.$createElement('a-button', { props: { type: 'link', size: 'small' }, on: { click: () => this.openEdit(r) } }, [
-              this.$createElement('a-icon', { props: { type: 'edit' } }),
-              this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('pages.multiSubscriptions.edit'))
-            ])
-          ]),
-          this.$createElement('a-divider', { props: { type: 'vertical' } }),
-          this.$createElement('a-tooltip', { props: { title: this.$t('copy') } }, [
-            this.$createElement('a-button', { props: { type: 'link', size: 'small' }, on: { click: () => this.copySubUrl(r) } }, [
-              this.$createElement('a-icon', { props: { type: 'copy' } }),
-              this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('copy'))
-            ])
-          ]),
-          this.$createElement('a-divider', { props: { type: 'vertical' } }),
-          this.$createElement('a-popconfirm', {
-            props: {
-              title: this.$t('deleteConfirm'),
-              okText: this.$t('yes'),
-              cancelText: this.$t('no')
-            },
-            on: { confirm: () => this.del(r) }
-          }, [
-            this.$createElement('a-button', { props: { type: 'link', size: 'small', danger: true } }, [
-              this.$createElement('a-icon', { props: { type: 'delete' } }),
-              this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('pages.multiSubscriptions.delete'))
-            ])
-          ])
-        ]);
       }
-    },
-    mounted() {
-      this.refresh();
-      const app = document.getElementById('app');
-      if (app) app.removeAttribute('v-cloak');
+    });
+
+    console.log('Vue app initialized', vueApp);
+  } catch (err) {
+    console.error('Error initializing Vue app:', err);
+    // показать содержимое на случай ошибки
+    const app = document.getElementById('app');
+    if (app) {
+      app.removeAttribute('v-cloak');
+      app.style.display = 'block';
     }
-  });
+  }
 </script>
 
 {{ template "page/body_end" .}}
