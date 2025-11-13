@@ -51,233 +51,129 @@
 {{template "component/aSidebar" .}}
 {{template "component/aThemeSwitch" .}}
 <script>
-  // Проверка зависимостей
-  console.log('Checking dependencies...');
-  if (typeof Vue === 'undefined') {
-    console.error('Vue is not loaded');
-  } else {
-    console.log('Vue is loaded, version:', Vue.version);
-  }
+try {
+  const { createApp, ref, reactive, onMounted, h } = Vue;
 
-  if (typeof MediaQueryMixin === 'undefined') {
-    console.error('MediaQueryMixin is not loaded');
-  } else {
-    console.log('MediaQueryMixin is loaded');
-  }
-
-  if (typeof themeSwitcher === 'undefined') {
-    console.error('themeSwitcher is not defined');
-  } else {
-    console.log('themeSwitcher is defined');
-  }
+  if (!themeSwitcher) throw new Error('themeSwitcher is not defined');
 
   const appEl = document.getElementById('app');
-  if (!appEl) {
-    console.error('Element #app not found!');
-  } else {
-    console.log('Element #app found');
-  }
+  if (!appEl) throw new Error('Element #app not found!');
 
-  try {
-    console.log('Initializing Vue app...');
-    
-    const vueApp = new Vue({
-      delimiters: ['[[', ']]'],
-      el: '#app',
-      mixins: [MediaQueryMixin],
-      data: {
-        themeSwitcher,
-        loadingStates: { spinning: false },
-        loadingTip: '{{ i18n "loading"}}',
-        items: [],
-        modals: { edit: { visible: false } },
-        form: { id:null, name:'', subId:'', nodeIds:'[]', remark:'', enable:true },
-        v: { name:{}, subId:{}, nodeIds:{} },
-      },
-      methods: {
-        async refresh() {
-          try {
-            const msg = await HttpUtil.get('/panel/api/multi-subscriptions/');
-            if (msg.success) {
-              this.items = msg.obj || [];
-            } else {
-              this.$message.error(this.$t('validation.loadFailed'));
-            }
-          } catch (e) {
-            this.$message.error(this.$t('validation.loadFailed'));
-          }
-        },
-        openAdd() {
-          this.form = { id:null, name:'', subId:'', nodeIds:'[]', remark:'', enable:true };
-          this.clearValidation();
-          this.modals.edit.visible = true;
-        },
-        openEdit(r) {
-          this.form = Object.assign({}, r);
-          if (typeof this.form.nodeIds !== 'string') {
-            this.form.nodeIds = JSON.stringify(this.form.nodeIds || []);
-          }
-          this.clearValidation();
-          this.modals.edit.visible = true;
-        },
-        clearValidation() {
-          this.v = { name:{}, subId:{}, nodeIds:{} };
-        },
-        validate() {
-          let ok = true;
-          this.clearValidation();
+  const vueApp = createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+      // --- reactive state ---
+      const items = ref([]);
+      const loadingStates = reactive({ spinning: false });
+      const loadingTip = '{{ i18n "loading"}}';
+      const modals = reactive({ edit: { visible: false } });
+      const form = reactive({ id: null, name: '', subId: '', nodeIds: '[]', remark: '', enable: true });
+      const v = reactive({ name: {}, subId: {}, nodeIds: {} });
 
-          if (!this.form.name) {
-            this.v.name = { status:'error', help:this.$t('validation.required') };
-            ok = false;
-          }
+      // --- methods ---
+      const clearValidation = () => {
+        v.name = {}; v.subId = {}; v.nodeIds = {};
+      };
 
-          if (this.form.subId && (this.form.subId.length < 3 || this.form.subId.length > 64)) {
-            this.v.subId = { status:'error', help:this.$t('validation.invalidSubId') };
-            ok = false;
-          }
+      const validate = () => {
+        let ok = true;
+        clearValidation();
+        if (!form.name) { v.name = { status: 'error', help: vueApp.config.globalProperties.$t('validation.required') }; ok = false; }
+        if (form.subId && (form.subId.length < 3 || form.subId.length > 64)) { v.subId = { status: 'error', help: vueApp.config.globalProperties.$t('validation.invalidSubId') }; ok = false; }
+        try {
+          const arr = JSON.parse(form.nodeIds || '[]');
+          if (!Array.isArray(arr) || !arr.every(x => Number.isInteger(x))) { v.nodeIds = { status: 'error', help: vueApp.config.globalProperties.$t('validation.invalidNodeIds') }; ok = false; }
+        } catch { v.nodeIds = { status: 'error', help: vueApp.config.globalProperties.$t('validation.invalidNodeIds') }; ok = false; }
+        return ok;
+      };
 
-          try {
-            const arr = JSON.parse(this.form.nodeIds || '[]');
-            if (!Array.isArray(arr) || !arr.every(x => Number.isInteger(x))) {
-              this.v.nodeIds = { status:'error', help:this.$t('validation.invalidNodeIds') };
-              ok = false;
-            }
-          } catch (e) {
-            this.v.nodeIds = { status:'error', help:this.$t('validation.invalidNodeIds') };
-            ok = false;
-          }
-
-          return ok;
-        },
-        async save() {
-          if (!this.validate()) return;
-          const payload = Object.assign({}, this.form);
-          try { payload.nodeIds = JSON.parse(this.form.nodeIds || '[]'); } catch(_) {}
-          
-          let res;
-          if (this.form.id) {
-            res = await HttpUtil.post('/panel/api/multi-subscriptions/' + this.form.id, payload);
-          } else {
-            res = await HttpUtil.post('/panel/api/multi-subscriptions/', payload);
-          }
-
-          if (res && res.success) {
-            this.$message.success(this.$t('validation.saveSuccess'));
-            this.modals.edit.visible = false;
-            this.refresh();
-          } else {
-            this.$message.error(this.$t('validation.saveFailed'));
-          }
-        },
-        async del(r) {
-          const res = await HttpUtil.post('/panel/api/multi-subscriptions/' + r.id + '/delete');
-          if (res.success) {
-            this.$message.success(this.$t('validation.saveSuccess'));
-          } else {
-            this.$message.error(this.$t('validation.saveFailed'));
-          }
-          this.refresh();
-        },
-        async copySubUrl(r) {
-          try {
-            const res = await HttpUtil.get('/panel/api/multi-subscriptions/' + r.id + '/subscription-url');
-            if (res && res.success && res.obj && res.obj.url) {
-              await navigator.clipboard.writeText(res.obj.url);
-              this.$message.success(this.$t('copy') + ' ' + this.$t('success'));
-            } else {
-              this.$message.error(this.$t('validation.loadFailed'));
-            }
-          } catch(e) {
-            this.$message.error(this.$t('validation.loadFailed'));
-          }
-        },
-        enableTpl(r) {
-          return this.$createElement('a-tag', { props: { color: r.enable ? 'green' : 'default' } }, [
-            this.$createElement('a-icon', { props: { type: r.enable ? 'check-circle' : 'close-circle' }, style: 'margin-right: 4px' }),
-            r.enable ? (this.$t('yes') || 'Yes') : (this.$t('no') || 'No')
-          ]);
-        },
-        actionTpl(r) {
-          return this.$createElement('span', [
-            this.$createElement('a-tooltip', { props: { title: this.$t('pages.multiSubscriptions.edit') || 'Edit' } }, [
-              this.$createElement('a-button', { props: { type:'link', size:'small' }, on:{ click: () => this.openEdit(r) } }, [
-                this.$createElement('a-icon', { props: { type:'edit' } }),
-                this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('pages.multiSubscriptions.edit') || 'Edit')
-              ])
-            ]),
-            this.$createElement('a-divider', { props: { type:'vertical' } }),
-            this.$createElement('a-tooltip', { props: { title: this.$t('copy') || 'Copy subscription URL' } }, [
-              this.$createElement('a-button', { props: { type:'link', size:'small' }, on:{ click: () => this.copySubUrl(r) } }, [
-                this.$createElement('a-icon', { props: { type:'copy' } }),
-                this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('copy') || 'Copy')
-              ])
-            ]),
-            this.$createElement('a-divider', { props: { type:'vertical' } }),
-            this.$createElement('a-popconfirm', {
-              props: {
-                title: this.$t('deleteConfirm') || 'Are you sure?',
-                okText: this.$t('yes') || 'Yes',
-                cancelText: this.$t('no') || 'No'
-              },
-              on: { confirm: () => this.del(r) }
-            }, [
-              this.$createElement('a-button', { props:{ type:'link', size:'small', danger:true } }, [
-                this.$createElement('a-icon', { props:{ type:'delete' } }),
-                this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('pages.multiSubscriptions.delete') || 'Delete')
-              ])
-            ])
-          ]);
+      const refresh = async () => {
+        try {
+          const msg = await HttpUtil.get('/panel/api/multi-subscriptions/');
+          items.value = msg.success ? (msg.obj || []) : [];
+          if (!msg.success) vueApp.config.globalProperties.$message.error(vueApp.config.globalProperties.$t('validation.loadFailed'));
+        } catch {
+          vueApp.config.globalProperties.$message.error(vueApp.config.globalProperties.$t('validation.loadFailed'));
         }
-      },
-      mounted() {
-        console.log('Vue app mounted successfully');
-        console.log('Vue $el:', this.$el);
-        console.log('Vue $el type:', this.$el ? this.$el.nodeType : 'null');
-        console.log('Vue $el tagName:', this.$el ? this.$el.tagName : 'null');
+      };
 
-        const appElement = document.getElementById('app');
-        if (appElement) {
-          appElement.removeAttribute('v-cloak');
-          console.log('Removed v-cloak attribute from #app');
-          if (appElement.style.display === 'none') {
-            appElement.style.display = '';
-            console.log('Removed display:none from #app');
-          }
-        }
+      const openAdd = () => { Object.assign(form, { id: null, name: '', subId: '', nodeIds: '[]', remark: '', enable: true }); clearValidation(); modals.edit.visible = true; };
+      const openEdit = r => { Object.assign(form, { ...r, nodeIds: typeof r.nodeIds === 'string' ? r.nodeIds : JSON.stringify(r.nodeIds || []) }); clearValidation(); modals.edit.visible = true; };
 
-        this.refresh();
-      }
-    });
+      const save = async () => {
+        if (!validate()) return;
+        const payload = { ...form };
+        try { payload.nodeIds = JSON.parse(form.nodeIds || '[]'); } catch {}
+        const res = form.id
+          ? await HttpUtil.post('/panel/api/multi-subscriptions/' + form.id, payload)
+          : await HttpUtil.post('/panel/api/multi-subscriptions/', payload);
+        if (res && res.success) { vueApp.config.globalProperties.$message.success(vueApp.config.globalProperties.$t('validation.saveSuccess')); modals.edit.visible = false; refresh(); }
+        else { vueApp.config.globalProperties.$message.error(vueApp.config.globalProperties.$t('validation.saveFailed')); }
+      };
 
-    console.log('Vue app instance created:', vueApp);
+      const del = async r => {
+        const res = await HttpUtil.post('/panel/api/multi-subscriptions/' + r.id + '/delete');
+        vueApp.config.globalProperties.$message[res.success ? 'success' : 'error'](res.success ? vueApp.config.globalProperties.$t('validation.saveSuccess') : vueApp.config.globalProperties.$t('validation.saveFailed'));
+        refresh();
+      };
 
-    // Проверка после короткой задержки
-    setTimeout(() => {
-      const appElement = document.getElementById('app');
-      if (appElement) {
-        if (appElement.hasAttribute('v-cloak')) {
-          console.warn('v-cloak still present after mount, removing it');
-          appElement.removeAttribute('v-cloak');
-        }
-        const computedStyle = window.getComputedStyle(appElement);
-        if (computedStyle.display === 'none') {
-          console.warn('Element #app is still hidden, forcing display');
-          appElement.style.display = '';
-        }
-      }
-    }, 100);
+      const copySubUrl = async r => {
+        try {
+          const res = await HttpUtil.get('/panel/api/multi-subscriptions/' + r.id + '/subscription-url');
+          if (res?.success && res.obj?.url) { await navigator.clipboard.writeText(res.obj.url); vueApp.config.globalProperties.$message.success(vueApp.config.globalProperties.$t('copy') + ' ' + vueApp.config.globalProperties.$t('success')); }
+          else vueApp.config.globalProperties.$message.error(vueApp.config.globalProperties.$t('validation.loadFailed'));
+        } catch { vueApp.config.globalProperties.$message.error(vueApp.config.globalProperties.$t('validation.loadFailed')); }
+      };
 
-  } catch (e) {
-    console.error('Error initializing Vue app:', e);
-    console.error('Error stack:', e.stack);
-    const app = document.getElementById('app');
-    if (app) {
-      app.removeAttribute('v-cloak');
-      app.style.display = 'block';
-      console.log('Removed v-cloak from #app');
+      const enableTpl = r => h('a-tag', { color: r.enable ? 'green' : 'default' }, [
+        h('a-icon', { type: r.enable ? 'check-circle' : 'close-circle', style: 'margin-right:4px' }),
+        r.enable ? vueApp.config.globalProperties.$t('yes') : 'No'
+      ]);
+
+      const actionTpl = r => h('span', [
+        h('a-tooltip', { title: vueApp.config.globalProperties.$t('pages.multiSubscriptions.edit') }, [
+          h('a-button', { type: 'link', size: 'small', onClick: () => openEdit(r) }, [
+            h('a-icon', { type: 'edit' }),
+            h('span', { style: 'margin-left:4px' }, vueApp.config.globalProperties.$t('pages.multiSubscriptions.edit'))
+          ])
+        ]),
+        h('a-divider', { type: 'vertical' }),
+        h('a-tooltip', { title: vueApp.config.globalProperties.$t('copy') }, [
+          h('a-button', { type: 'link', size: 'small', onClick: () => copySubUrl(r) }, [
+            h('a-icon', { type: 'copy' }),
+            h('span', { style: 'margin-left:4px' }, vueApp.config.globalProperties.$t('copy'))
+          ])
+        ]),
+        h('a-divider', { type: 'vertical' }),
+        h('a-popconfirm', { title: vueApp.config.globalProperties.$t('deleteConfirm'), okText: vueApp.config.globalProperties.$t('yes'), cancelText: vueApp.config.globalProperties.$t('no'), onConfirm: () => del(r) }, [
+          h('a-button', { type: 'link', size: 'small', danger: true }, [
+            h('a-icon', { type: 'delete' }),
+            h('span', { style: 'margin-left:4px' }, vueApp.config.globalProperties.$t('pages.multiSubscriptions.delete'))
+          ])
+        ])
+      ]);
+
+      // --- lifecycle ---
+      onMounted(() => {
+        const appEl = document.getElementById('app');
+        if (appEl) { appEl.removeAttribute('v-cloak'); appEl.style.display = ''; }
+        refresh();
+      });
+
+      return {
+        items, loadingStates, loadingTip, modals, form, v,
+        openAdd, openEdit, save, del, copySubUrl, refresh, enableTpl, actionTpl
+      };
     }
-  }
+  });
+
+  vueApp.mount('#app');
+
+} catch (e) {
+  console.error('Vue 3 Composition API initialization error:', e);
+  const app = document.getElementById('app');
+  if (app) { app.removeAttribute('v-cloak'); app.style.display = 'block'; }
+}
 </script>
 
 
