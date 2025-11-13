@@ -68,15 +68,14 @@
   } else {
     console.log('themeSwitcher is defined');
   }
-  
-  // Check if #app element exists
+
   const appEl = document.getElementById('app');
   if (!appEl) {
     console.error('Element #app not found!');
   } else {
     console.log('Element #app found');
   }
-  
+
   try {
     console.log('Initializing Vue app...');
     const vueApp = new Vue({
@@ -85,156 +84,222 @@
       mixins: [MediaQueryMixin],
       data: {
         themeSwitcher,
-      loadingStates: { spinning: false, },
-      loadingTip: '{{ i18n "loading"}}',
-      items: [],
-      modals: { edit: { visible: false } },
-      form: { id:null, name:'', subId:'', nodeIds:'[]', remark:'', enable:true },
-      v: { name:{}, subId:{}, nodeIds:{} },
-    },
-    methods: {
-      async refresh() {
-        try {
-          const msg = await HttpUtil.get('/panel/api/multi-subscriptions/');
-          if (msg.success) {
-            this.items = msg.obj || [];
-          } else {
+        loadingStates: { spinning: false },
+        loadingTip: '{{ i18n "loading"}}',
+        items: [],
+        modals: { edit: { visible: false } },
+        form: { id: null, name: '', subId: '', nodeIds: '[]', remark: '', enable: true },
+        v: { name: {}, subId: {}, nodeIds: {} },
+      },
+      methods: {
+        async refresh() {
+          try {
+            const msg = await HttpUtil.get('/panel/api/multi-subscriptions/');
+            if (msg.success) {
+              this.items = msg.obj || [];
+            } else {
+              this.$message.error(this.$t('validation.loadFailed'));
+            }
+          } catch (e) {
             this.$message.error(this.$t('validation.loadFailed'));
           }
-        } catch (e) {
-          this.$message.error(this.$t('validation.loadFailed'));
-        }
-      },
-      openAdd(){ this.form = { id:null, name:'', subId:'', nodeIds:'[]', remark:'', enable:true }; this.clearValidation(); this.modals.edit.visible=true; },
-      openEdit(r){ this.form = Object.assign({}, r); if(typeof this.form.nodeIds !== 'string'){ this.form.nodeIds = JSON.stringify(this.form.nodeIds||[]) } this.clearValidation(); this.modals.edit.visible=true; },
-      clearValidation(){ this.v = { name:{}, subId:{}, nodeIds:{} }; },
-      validate(){
-        let ok = true; this.clearValidation();
-        if(!this.form.name){ this.v.name={status:'error', help:this.$t('validation.required')}; ok=false }
-        if(this.form.subId && (this.form.subId.length<3 || this.form.subId.length>64)){ this.v.subId={status:'error', help:this.$t('validation.invalidSubId')}; ok=false }
-        try{
-          const arr = JSON.parse(this.form.nodeIds||'[]');
-          if(!Array.isArray(arr) || !arr.every(x=> Number.isInteger(x))){ this.v.nodeIds={status:'error', help:this.$t('validation.invalidNodeIds')}; ok=false }
-        }catch(e){ this.v.nodeIds={status:'error', help:this.$t('validation.invalidNodeIds')}; ok=false }
-        return ok;
-      },
-      async save(){
-        if(!this.validate()) return;
-        let res;
-        const payload = Object.assign({}, this.form);
-        try{ payload.nodeIds = JSON.parse(this.form.nodeIds||'[]'); }catch(_){ /* keep as string if parsing fails */ }
-        if(this.form.id){ res = await HttpUtil.post('/panel/api/multi-subscriptions/'+this.form.id, payload); }
-        else{ res = await HttpUtil.post('/panel/api/multi-subscriptions/', payload); }
-        if(res && res.success){ this.$message.success(this.$t('validation.saveSuccess')); this.modals.edit.visible=false; this.refresh(); }
-        else { this.$message.error(this.$t('validation.saveFailed')); }
-      },
-      async del(r){ const res = await HttpUtil.post('/panel/api/multi-subscriptions/'+r.id+'/delete'); if(res.success){ this.$message.success(this.$t('validation.saveSuccess')); } else { this.$message.error(this.$t('validation.saveFailed')); } this.refresh(); },
-      async copySubUrl(r){
-        try {
-          const res = await HttpUtil.get('/panel/api/multi-subscriptions/'+r.id+'/subscription-url');
-          if(res && res.success && res.obj && res.obj.url){
-            await navigator.clipboard.writeText(res.obj.url);
-            this.$message.success(this.$t('copy') + ' ' + this.$t('success'));
+        },
+        openAdd() {
+          this.form = { id: null, name: '', subId: '', nodeIds: '[]', remark: '', enable: true };
+          this.clearValidation();
+          this.modals.edit.visible = true;
+        },
+        openEdit(r) {
+          this.form = Object.assign({}, r);
+          if (typeof this.form.nodeIds !== 'string') {
+            this.form.nodeIds = JSON.stringify(this.form.nodeIds || []);
+          }
+          this.clearValidation();
+          this.modals.edit.visible = true;
+        },
+        clearValidation() {
+          this.v = { name: {}, subId: {}, nodeIds: {} };
+        },
+        validate() {
+          let ok = true;
+          this.clearValidation();
+          if (!this.form.name) {
+            this.v.name = { status: 'error', help: this.$t('validation.required') };
+            ok = false;
+          }
+          if (this.form.subId && (this.form.subId.length < 3 || this.form.subId.length > 64)) {
+            this.v.subId = { status: 'error', help: this.$t('validation.invalidSubId') };
+            ok = false;
+          }
+          try {
+            const arr = JSON.parse(this.form.nodeIds || '[]');
+            if (!Array.isArray(arr) || !arr.every(x => Number.isInteger(x))) {
+              this.v.nodeIds = { status: 'error', help: this.$t('validation.invalidNodeIds') };
+              ok = false;
+            }
+          } catch (e) {
+            this.v.nodeIds = { status: 'error', help: this.$t('validation.invalidNodeIds') };
+            ok = false;
+          }
+          return ok;
+        },
+        async save() {
+          if (!this.validate()) return;
+          let res;
+          const payload = Object.assign({}, this.form);
+          try { payload.nodeIds = JSON.parse(this.form.nodeIds || '[]'); } catch (_) {}
+          if (this.form.id) {
+            res = await HttpUtil.post('/panel/api/multi-subscriptions/' + this.form.id, payload);
           } else {
+            res = await HttpUtil.post('/panel/api/multi-subscriptions/', payload);
+          }
+          if (res && res.success) {
+            this.$message.success(this.$t('validation.saveSuccess'));
+            this.modals.edit.visible = false;
+            this.refresh();
+          } else {
+            this.$message.error(this.$t('validation.saveFailed'));
+          }
+        },
+        async del(r) {
+          const res = await HttpUtil.post('/panel/api/multi-subscriptions/' + r.id + '/delete');
+          if (res.success) {
+            this.$message.success(this.$t('validation.saveSuccess'));
+          } else {
+            this.$message.error(this.$t('validation.saveFailed'));
+          }
+          this.refresh();
+        },
+        async copySubUrl(r) {
+          try {
+            const res = await HttpUtil.get('/panel/api/multi-subscriptions/' + r.id + '/subscription-url');
+            if (res && res.success && res.obj && res.obj.url) {
+              await navigator.clipboard.writeText(res.obj.url);
+              this.$message.success(this.$t('copy') + ' ' + this.$t('success'));
+            } else {
+              this.$message.error(this.$t('validation.loadFailed'));
+            }
+          } catch (e) {
             this.$message.error(this.$t('validation.loadFailed'));
           }
-        } catch(e) {
-          this.$message.error(this.$t('validation.loadFailed'));
+        },
+        enableTpl(r) {
+          return this.$createElement('a-tag', { props: { color: r.enable ? 'green' : 'default' } }, [
+            this.$createElement('a-icon', { props: { type: r.enable ? 'check-circle' : 'close-circle' }, style: 'margin-right: 4px' }),
+            r.enable ? (this.$t('yes') || 'Yes') : (this.$t('no') || 'No')
+          ]);
+        },
+        actionTpl(r) {
+          return this.$createElement('span', [
+            this.$createElement('a-tooltip', { props: { title: this.$t('pages.multiSubscriptions.edit') || 'Edit' } }, [
+              this.$createElement('a-button', {
+                props: { type: 'link', size: 'small' },
+                on: { click: () => this.openEdit(r) }
+              }, [
+                this.$createElement('a-icon', { props: { type: 'edit' } }),
+                this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('pages.multiSubscriptions.edit') || 'Edit')
+              ])
+            ]),
+            this.$createElement('a-divider', { props: { type: 'vertical' } }),
+            this.$createElement('a-tooltip', { props: { title: this.$t('copy') || 'Copy subscription URL' } }, [
+              this.$createElement('a-button', {
+                props: { type: 'link', size: 'small' },
+                on: { click: () => this.copySubUrl(r) }
+              }, [
+                this.$createElement('a-icon', { props: { type: 'copy' } }),
+                this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('copy') || 'Copy')
+              ])
+            ]),
+            this.$createElement('a-divider', { props: { type: 'vertical' } }),
+            this.$createElement('a-popconfirm', {
+              props: {
+                title: this.$t('deleteConfirm') || 'Are you sure?',
+                okText: this.$t('yes') || 'Yes',
+                cancelText: this.$t('no') || 'No'
+              },
+              on: { confirm: () => this.del(r) }
+            }, [
+              this.$createElement('a-button', {
+                props: { type: 'link', size: 'small', danger: true }
+              }, [
+                this.$createElement('a-icon', { props: { type: 'delete' } }),
+                this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('pages.multiSubscriptions.delete') || 'Delete')
+              ])
+            ])
+          ]);
         }
       },
-      enableTpl(r){
-        return this.$createElement('a-tag', { props: { color: r.enable ? 'green' : 'default' } }, [
-          this.$createElement('a-icon', { props: { type: r.enable ? 'check-circle' : 'close-circle' }, style: 'margin-right: 4px' }),
-          r.enable ? (this.$t('yes') || 'Yes') : (this.$t('no') || 'No')
-        ]);
-      },
-      actionTpl(r){
-        return this.$createElement('span', [
-          this.$createElement('a-tooltip', { props: { title: this.$t('pages.multiSubscriptions.edit') || 'Edit' } }, [
-            this.$createElement('a-button', { 
-              props: { type: 'link', size: 'small' },
-              on: { click: () => this.openEdit(r) }
-            }, [
-              this.$createElement('a-icon', { props: { type: 'edit' } }),
-              this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('pages.multiSubscriptions.edit') || 'Edit')
-            ])
-          ]),
-          this.$createElement('a-divider', { props: { type: 'vertical' } }),
-          this.$createElement('a-tooltip', { props: { title: this.$t('copy') || 'Copy subscription URL' } }, [
-            this.$createElement('a-button', { 
-              props: { type: 'link', size: 'small' },
-              on: { click: () => this.copySubUrl(r) }
-            }, [
-              this.$createElement('a-icon', { props: { type: 'copy' } }),
-              this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('copy') || 'Copy')
-            ])
-          ]),
-          this.$createElement('a-divider', { props: { type: 'vertical' } }),
-          this.$createElement('a-popconfirm', {
-            props: {
-              title: this.$t('deleteConfirm') || 'Are you sure?',
-              okText: this.$t('yes') || 'Yes',
-              cancelText: this.$t('no') || 'No'
-            },
-            on: { confirm: () => this.del(r) }
-          }, [
-            this.$createElement('a-button', { 
-              props: { type: 'link', size: 'small', danger: true }
-            }, [
-              this.$createElement('a-icon', { props: { type: 'delete' } }),
-              this.$createElement('span', { style: 'margin-left: 4px' }, this.$t('pages.multiSubscriptions.delete') || 'Delete')
-            ])
-          ])
-        ]);
-      }
-    },
-  mounted(){ 
-  console.log('Vue app mounted successfully');
-  console.log('Vue $el:', this.$el);
-  console.log('Vue $el type:', this.$el ? this.$el.nodeType : 'null');
-  console.log('Vue $el tagName:', this.$el ? this.$el.tagName : 'null');
-  
-  const appElement = this.$el; // можно использовать напрямую
-  if (appElement) {
-    appElement.removeAttribute('v-cloak');
-    console.log('Removed v-cloak attribute from #app');
-    if (appElement.style.display === 'none') {
-      appElement.style.display = '';
-      console.log('Removed display:none from #app');
-    }
-  }
+      mounted() {
+        console.log('Vue app mounted successfully');
+        let appElement = null;
 
-  this.refresh(); 
-}
-  });
-  console.log('Vue app instance created:', vueApp);
-  
-  // Additional check after a short delay
-  setTimeout(() => {
-    const appElement = document.getElementById('app');
-    if (appElement) {
-      if (appElement.hasAttribute('v-cloak')) {
-        console.warn('v-cloak still present after mount, removing it');
-        appElement.removeAttribute('v-cloak');
+        if (this.$el && typeof this.$el.removeAttribute === 'function') {
+          appElement = this.$el;
+        } else if (this.$el && this.$el.$el && typeof this.$el.$el.removeAttribute === 'function') {
+          appElement = this.$el.$el;
+        } else {
+          const elById = document.getElementById('app');
+          if (elById && typeof elById.removeAttribute === 'function') {
+            appElement = elById;
+          }
+        }
+
+        if (!appElement) {
+          console.warn('Не удалось найти DOM-элемент #app для удаления v-cloak / показа.', {
+            $el: this.$el,
+            getElementById: document.getElementById('app')
+          });
+        } else {
+          console.log('Найден DOM-элемент для #app:', appElement);
+          if (appElement.hasAttribute && appElement.hasAttribute('v-cloak')) {
+            appElement.removeAttribute('v-cloak');
+            console.log('Removed v-cloak attribute from #app');
+          }
+          try {
+            const computed = window.getComputedStyle(appElement);
+            if (computed && computed.display === 'none') {
+              appElement.style.display = '';
+              console.log('Removed display:none from #app');
+            }
+          } catch (e) {
+            console.warn('getComputedStyle failed', e);
+          }
+        }
+
+        this.refresh();
       }
-      const computedStyle = window.getComputedStyle(appElement);
-      if (computedStyle.display === 'none') {
-        console.warn('Element #app is still hidden, forcing display');
-        appElement.style.display = '';
+    });
+
+    console.log('Vue app instance created:', vueApp);
+
+    // Safe delayed DOM check
+    setTimeout(() => {
+      let el = document.getElementById('app');
+      if (el && typeof el.removeAttribute === 'function') {
+        if (el.hasAttribute && el.hasAttribute('v-cloak')) {
+          el.removeAttribute('v-cloak');
+          console.log('Removed v-cloak after delay');
+        }
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none') {
+          el.style.display = '';
+          console.log('Forced display on #app after delay');
+        }
+      } else {
+        console.warn('Отложенная проверка: DOM-элемент #app не найден или не является элементом');
       }
-    }
-  }, 100);
+    }, 100);
   } catch (e) {
     console.error('Error initializing Vue app:', e);
     console.error('Error stack:', e.stack);
-    // Remove v-cloak to show content even if Vue fails
     const app = document.getElementById('app');
     if (app) {
       app.removeAttribute('v-cloak');
       app.style.display = 'block';
-      console.log('Removed v-cloak from #app');
+      console.log('Removed v-cloak from #app after initialization error');
     }
   }
 </script>
+
 
 {{ template "page/body_end" .}}
